@@ -1,54 +1,53 @@
 package com.griffith.maptrackerproject
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.GradientDrawable.Orientation
+import android.icu.util.Calendar
 import android.location.Location
 import android.os.Bundle
 import android.location.LocationListener
 import android.location.LocationManager
 import android.preference.PreferenceManager
-import android.util.MutableBoolean
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.*;
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.Button
-import androidx.compose.material.Text
+import androidx.compose.material.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat.requestLocationUpdates
-import androidx.lifecycle.MutableLiveData
+import androidx.core.content.ContextCompat.startActivity
 import org.osmdroid.config.Configuration
 import org.osmdroid.views.MapView
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import java.lang.reflect.Modifier
+import java.sql.Date
+import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.LocalDateTime
 
-class Map : ComponentActivity(), LocationListener {
+class RouteDisplay : ComponentActivity(), LocationListener {
     private lateinit var locationManager: LocationManager
     private val locationPermissionCode = 2
     private val locationUpdateInterval: Long = 5000 // 5 seconds
     private val locationUpdateDistance: Float = 10f // 10 meters
 
-    private val liveLocations = mutableStateListOf<GeoPoint>()
+    private val liveLocations = mutableMapOf<Date,GeoPoint>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Box(){
+            Box {
                 OsmMapView(liveLocations)
-
+                HistoryButton()
             }
         }
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
@@ -62,8 +61,8 @@ class Map : ComponentActivity(), LocationListener {
 
     override fun onLocationChanged(location: Location) {
         val geoPoint = GeoPoint(location.latitude, location.longitude)
-        liveLocations.add(geoPoint)
-
+        val time = Calendar.getInstance().time
+        liveLocations.put(time as Date, geoPoint)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -74,9 +73,8 @@ class Map : ComponentActivity(), LocationListener {
     }
 
 }
-var followUser : Boolean = false;
 @Composable
-fun OsmMapView(liveLocations: List<GeoPoint>) {
+fun OsmMapView(liveLocations: Map<Date,GeoPoint>) {
     val context = LocalContext.current
     Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
 
@@ -90,17 +88,23 @@ fun OsmMapView(liveLocations: List<GeoPoint>) {
         },
         update = { mapView ->
             if (liveLocations.isNotEmpty()) {
-                mapView.controller.setCenter(liveLocations.last())
+                mapView.controller.setCenter(liveLocations.values.last())
             }
         }
     )
 }
 
 @Composable
-fun FloatingButton() {
+fun HistoryButton() {
+    var context = LocalContext.current
     Button(onClick = {
-        //followUser = !followUser
+        //switching to History view
+        val intent = Intent(context, History::class.java);
+        context.startActivity(intent);
     }) {
-        Text("Button Over Map")
+        Icon(
+            imageVector = ImageVector.vectorResource(id = R.drawable.baseline_history_24),
+            contentDescription = "History"
+        )
     }
 }
