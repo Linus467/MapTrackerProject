@@ -1,4 +1,4 @@
-package com.griffith.maptrackerproject
+package com.griffith.maptrackerproject.Views
 
 import androidx.activity.ComponentActivity
 

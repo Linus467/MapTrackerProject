@@ -1,9 +1,8 @@
-package com.griffith.maptrackerproject
+package com.griffith.maptrackerproject.Views
 
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.drawable.GradientDrawable.Orientation
 import android.icu.util.Calendar
 import android.location.Location
 import android.os.Bundle
@@ -13,26 +12,29 @@ import android.preference.PreferenceManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.*;
 import androidx.compose.material.Button
 import androidx.compose.material.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.startActivity
+import androidx.room.Room
+import com.griffith.maptrackerproject.DB.AppDatabase
+import com.griffith.maptrackerproject.DB.Locations
+import com.griffith.maptrackerproject.DB.LocationsDAO
+import com.griffith.maptrackerproject.R
+import com.griffith.maptrackerproject.Views.History
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.views.MapView
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import java.lang.reflect.Modifier
 import java.sql.Date
-import java.text.SimpleDateFormat
-import java.time.LocalDate
-import java.time.LocalDateTime
+
 
 class RouteDisplay : ComponentActivity(), LocationListener {
     private lateinit var locationManager: LocationManager
@@ -41,6 +43,14 @@ class RouteDisplay : ComponentActivity(), LocationListener {
     private val locationUpdateDistance: Float = 10f // 10 meters
 
     private val liveLocations = mutableMapOf<Date,GeoPoint>()
+    //TODO install HILT for global database instance distribution
+    /*val db = Room.databaseBuilder(
+        applicationContext,
+        AppDatabase::class.java,
+        "Locations_Data"
+    ).build()
+
+    val locationsDAO = db.locationDAO()*/
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,7 +72,7 @@ class RouteDisplay : ComponentActivity(), LocationListener {
     override fun onLocationChanged(location: Location) {
         val geoPoint = GeoPoint(location.latitude, location.longitude)
         val time = Calendar.getInstance().time
-        liveLocations.put(time as Date, geoPoint)
+        //saveGeoPoint(geoPoint, time as Date)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -72,7 +82,15 @@ class RouteDisplay : ComponentActivity(), LocationListener {
         }
     }
 
+    fun saveGeoPoint(geoPoint: GeoPoint, date: Date ){
+        val locations = Locations(geoPoint.latitude,geoPoint.longitude, geoPoint.altitude, date);
+        CoroutineScope(Dispatchers.IO).launch {
+            //locationsDAO.insert(locations)
+        }
+    }
+
 }
+
 @Composable
 fun OsmMapView(liveLocations: Map<Date,GeoPoint>) {
     val context = LocalContext.current
@@ -99,8 +117,8 @@ fun HistoryButton() {
     var context = LocalContext.current
     Button(onClick = {
         //switching to History view
-        val intent = Intent(context, History::class.java);
-        context.startActivity(intent);
+        val intent = Intent(context, History::class.java)
+        context.startActivity(intent)
     }) {
         Icon(
             imageVector = ImageVector.vectorResource(id = R.drawable.baseline_history_24),
@@ -108,3 +126,4 @@ fun HistoryButton() {
         )
     }
 }
+

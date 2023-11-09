@@ -1,13 +1,10 @@
-package com.griffith.maptrackerproject
+package com.griffith.maptrackerproject.Views
 
 import android.content.Context
 import android.content.Intent
-import android.hardware.GeomagneticField
 import android.os.Bundle
-import android.os.Message
 import android.os.PersistableBundle
 import android.util.Log
-import android.view.View.OnClickListener
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -18,7 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Text
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.Button
 import androidx.compose.material.Icon
@@ -32,7 +28,8 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.griffith.maptrackerproject.R
+import com.griffith.maptrackerproject.Views.RouteDisplay
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.*
@@ -142,6 +139,12 @@ fun groupLocationsByDay(liveLocations: Map<Date, GeoPoint>): List<Pair<Date, Lis
     // Groups the Geolocations by date
     val locationsByDate = liveLocations.entries.groupBy {
         dateFormat.format(it.key)
+    }
+    //Getting all locations based on the date
+    for(locationsOrder in liveLocations){
+        for(locationsGrouping in liveLocations){
+
+        }
     }
 
     Log.d("groupLocationsByDay", "Grouped locations by date: $locationsByDate")
