@@ -35,17 +35,21 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class History : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
-        super.onCreate(savedInstanceState, persistentState)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         setContent{
-            goBackButton()
             //TODO get locationsPoints from database and replace sample data
-            HistoryColumn(liveLocations = sampleLiveLocationsPreview())
+            //HistoryColumn(liveLocations = sampleLiveLocationsPreview())
             //TODO Nothing is displayed on appstart
+            HistoryScreen()
         }
     }
 }
 
+@Composable
+fun HistoryScreen(){
+    HistoryColumn(liveLocations = sampleLiveLocationsPreview())
+}
 @Preview(showBackground = true)
 @Composable
 fun HistoryColumnPreview() {
@@ -130,7 +134,7 @@ fun DayRow(geoPoints : List<GeoPoint>, date: Date, onClick: () -> Unit){
 //Context given by Composable functions
 fun onDayRowClick(date: Date, context: Context){
     val intent = Intent(context, DayStatistics::class.java);
-    intent.putExtra("DateToDisplay", date);
+    intent.putExtra("DateToDisplay", date.time);
     context.startActivity(intent);
 }
 
@@ -156,20 +160,6 @@ fun groupLocationsByDay(liveLocations: Map<Date, GeoPoint>): List<Pair<Date, Lis
         Pair(date, locations)
     }.also {
         Log.d("groupLocationsByDay", "Final grouped list: $it")
-    }
-}
-
-@Composable
-fun goBackButton(){
-    var context = LocalContext.current
-    Button(onClick = {
-        val intent = Intent(context, RouteDisplay::class.java);
-        context.startActivity(intent);
-    }) {
-        Icon(
-            imageVector = ImageVector.vectorResource(id = R.drawable.baseline_undo_24),
-            contentDescription = "Routes"
-        )
     }
 }
 

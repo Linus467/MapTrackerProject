@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools" >
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"  />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.WRITE_APN_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -16,14 +17,20 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.MapTrackerProject"
-        tools:targetApi="34" >
+        tools:targetApi="34">
+        <activity
+            android:name=".Views.DayStatistics"
+            android:exported="false"
+            android:label="DayStatistics"
+            android:theme="@style/Theme.MapTrackerProject" />
         <activity
             android:name=".Views.RouteDisplay"
             android:exported="true"
-            android:label="@string/title_activity_main2"
-            android:theme="@style/Theme.MapTrackerProject" >
+            android:label="RouteDisplay"
+            android:theme="@style/Theme.MapTrackerProject">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -31,12 +38,8 @@
             android:name=".Views.History"
             android:exported="true"
             android:label="History"
-            android:parentActivityName=".Views.RouteDisplay"
-            />
-
-
-
-
+            android:parentActivityName=".Views.RouteDisplay" />
+        <service android:name=".Services.LocationService"/>
     </application>
 
 </manifest>

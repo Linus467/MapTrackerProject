@@ -1,29 +1,37 @@
 package com.griffith.maptrackerproject.Views
 
 import android.Manifest
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.icu.util.Calendar
 import android.location.Location
 import android.os.Bundle
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.IBinder
 import android.preference.PreferenceManager
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material.Button
-import androidx.compose.material.Icon
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.room.Room
-import com.griffith.maptrackerproject.DB.AppDatabase
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.rememberNavController
 import com.griffith.maptrackerproject.DB.Locations
-import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.Views.History
 import kotlinx.coroutines.CoroutineScope
@@ -34,15 +42,39 @@ import org.osmdroid.views.MapView
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import java.sql.Date
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material.Icon
+import androidx.compose.ui.res.painterResource
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.griffith.maptrackerproject.Services.LocationService
+import com.griffith.maptrackerproject.ui.theme.Screen
+import org.osmdroid.views.overlay.Polyline
 
 
-class RouteDisplay : ComponentActivity(), LocationListener {
-    private lateinit var locationManager: LocationManager
-    private val locationPermissionCode = 2
-    private val locationUpdateInterval: Long = 5000 // 5 seconds
-    private val locationUpdateDistance: Float = 10f // 10 meters
+var locationsTrackingActive: Boolean = false
+class RouteDisplay : ComponentActivity() {
+
+    private lateinit var locationService: LocationService
+    //Starting an pausing Locations recording on device
+    private var isBound = false
+
+
+    //Connecting to Location Service
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as LocationService.LocalBinder
+            locationService = binder.getService()
+            isBound = true
+        }
+        override fun onServiceDisconnected(name: ComponentName?) {
+            isBound = false
+        }
+    }
 
     private val liveLocations = mutableMapOf<Date,GeoPoint>()
+
     //TODO install HILT for global database instance distribution
     /*val db = Room.databaseBuilder(
         applicationContext,
@@ -55,41 +87,82 @@ class RouteDisplay : ComponentActivity(), LocationListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Box {
-                OsmMapView(liveLocations)
-                HistoryButton()
+            DisplayRouteMain(sampleLiveLocationsPreview())
+        }
+        startLocationService()
+        Intent(this,LocationService::class.java).also{
+            bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    fun sampleLiveLocationsPreview(): Map<Date, GeoPoint> {
+        val sampleLiveLocations = mapOf(
+            Date(123, 0, 1) to GeoPoint(37.7749, -122.4194),
+            Date(123, 0, 2) to GeoPoint(23.4749, -39.4394),
+            Date(123, 0, 2) to GeoPoint(34.0522, -118.2437),
+            Date(123, 0, 3) to GeoPoint(40.7128, -74.0060),
+            Date(123, 0, 4) to GeoPoint(40.7128, -74.0060)
+        )
+        return sampleLiveLocations
+    }
+
+
+    override fun onDestroy() {
+        super.onDestroy()
+        //Disconnection from Location Service
+        if(isBound){
+            unbindService(connection)
+            isBound = false
+        }
+    }
+    private fun startLocationService(){
+        val serviceIntent = Intent(this, LocationService::class.java)
+        startService(serviceIntent)
+    }
+}
+
+@Composable
+fun DisplayRouteMain(liveLocations: Map<Date,GeoPoint>){
+    val navController = rememberNavController()
+    Scaffold(
+        bottomBar = {
+            BottomNavigation {
+                BottomNavigationItem(
+                    icon = { Icon(painterResource(id = R.drawable.baseline_map_24), contentDescription = "Map View") },
+                    selected = navController.currentDestination?.route == Screen.MapView.route,
+                    onClick = { navController.navigate(Screen.MapView.route) }
+                )
+
+                BottomNavigationItem(
+                    icon = {
+                        val conId = if (locationsTrackingActive){
+                            R.drawable.pause_circle
+                        }else{
+                            R.drawable.play_circle_24
+                        }
+                        Icon(painterResource(id = conId), contentDescription = "Continue Tracking")
+                           },
+                    selected = false,
+                    onClick = {
+                        locationsTrackingActive = !locationsTrackingActive
+                    }
+                )
+
+                BottomNavigationItem(
+                    icon = { Icon(painterResource(id = R.drawable.baseline_history_24), contentDescription = "Map View") },
+                    selected = navController.currentDestination?.route == Screen.History.route,
+                    onClick = { navController.navigate(Screen.History.route) }
+                )
             }
         }
-        locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
-    }
-
-    private fun startLocationUpdates() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, locationUpdateInterval, locationUpdateDistance, this)
+    ) {innerPadding->
+        NavHost(navController, startDestination = Screen.MapView.route, Modifier.padding(innerPadding)) {
+            composable(Screen.MapView.route) { OsmMapView(liveLocations) }
+            composable(Screen.History.route) { HistoryScreen() }
         }
     }
-
-    override fun onLocationChanged(location: Location) {
-        val geoPoint = GeoPoint(location.latitude, location.longitude)
-        val time = Calendar.getInstance().time
-        //saveGeoPoint(geoPoint, time as Date)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == locationPermissionCode && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startLocationUpdates()
-        }
-    }
-
-    fun saveGeoPoint(geoPoint: GeoPoint, date: Date ){
-        val locations = Locations(geoPoint.latitude,geoPoint.longitude, geoPoint.altitude, date);
-        CoroutineScope(Dispatchers.IO).launch {
-            //locationsDAO.insert(locations)
-        }
-    }
-
 }
+
 
 @Composable
 fun OsmMapView(liveLocations: Map<Date,GeoPoint>) {
@@ -105,25 +178,39 @@ fun OsmMapView(liveLocations: Map<Date,GeoPoint>) {
             }
         },
         update = { mapView ->
+            mapView.overlays.clear()
+            Log.d("Locations","${liveLocations.size}")
             if (liveLocations.isNotEmpty()) {
+                val polyline = Polyline(mapView).apply {
+                    outlinePaint.color = android.graphics.Color.RED
+                    outlinePaint.strokeWidth = 8f
+                    setPoints(liveLocations.values.toList())
+                }
+
+                mapView.overlays.add(polyline)
+
                 mapView.controller.setCenter(liveLocations.values.last())
+
+                mapView.invalidate()
             }
         }
     )
 }
 
-@Composable
-fun HistoryButton() {
-    var context = LocalContext.current
-    Button(onClick = {
-        //switching to History view
-        val intent = Intent(context, History::class.java)
-        context.startActivity(intent)
-    }) {
-        Icon(
-            imageVector = ImageVector.vectorResource(id = R.drawable.baseline_history_24),
-            contentDescription = "History"
-        )
-    }
-}
+
+//@Composable
+//fun HistoryButton() {
+//    var context = LocalContext.current
+//    Button(modifier = Modifier.height(40.dp).background(Color.Black),
+//        onClick = {
+//        //switching to History view
+//        val intent = Intent(context, History::class.java)
+//        context.startActivity(intent)
+//    }) {
+//        Icon(
+//            imageVector = ImageVector.vectorResource(id = R.drawable.baseline_history_24),
+//            contentDescription = "History"
+//        )
+//    }
+//}
 
