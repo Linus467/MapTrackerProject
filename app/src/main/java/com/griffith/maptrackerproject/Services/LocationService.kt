@@ -1,7 +1,6 @@
 package com.griffith.maptrackerproject.Services
 
 import android.Manifest
-import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,11 +13,13 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.griffith.maptrackerproject.DB.Locations
+import com.griffith.maptrackerproject.DB.LocationsDAO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import java.sql.Date
+import javax.inject.Inject
 
 class LocationService : Service(),LocationListener {
     private lateinit var locationManager: LocationManager
@@ -26,6 +27,9 @@ class LocationService : Service(),LocationListener {
     private val locationUpdateDistance: Float = 10f // 10 meters
 
     var locationsUpdatesActive: Boolean = false
+
+    @Inject
+    lateinit var locationsDAO: LocationsDAO
 
     override fun onCreate() {
         super.onCreate()
@@ -36,7 +40,6 @@ class LocationService : Service(),LocationListener {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, locationUpdateInterval, locationUpdateDistance, this)
             locationsUpdatesActive = true
-            Log.d("LocationUpdates", "active")
         }
     }
 
@@ -52,13 +55,13 @@ class LocationService : Service(),LocationListener {
     }
 
     fun saveGeoPoint(geoPoint: GeoPoint, date: Date){
-        val locations = Locations(geoPoint.latitude,geoPoint.longitude, geoPoint.altitude, date);
+        val locations = Locations(geoPoint.latitude,geoPoint.longitude, geoPoint.altitude, date)
         CoroutineScope(Dispatchers.IO).launch {
-            //locationsDAO.insert(locations)
+            locationsDAO.insert(locations)
         }
     }
 
-    private val binder = LocalBinder();
+    private val binder = LocalBinder()
 
     inner class LocalBinder : Binder(){
         fun getService(): LocationService = this@LocationService

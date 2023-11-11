@@ -1,64 +1,54 @@
 package com.griffith.maptrackerproject.Views
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.icu.util.Calendar
-import android.location.Location
 import android.os.Bundle
-import android.location.LocationListener
-import android.location.LocationManager
 import android.os.IBinder
 import android.preference.PreferenceManager
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.rememberNavController
-import com.griffith.maptrackerproject.DB.Locations
-import com.griffith.maptrackerproject.R
-import com.griffith.maptrackerproject.Views.History
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.osmdroid.config.Configuration
-import org.osmdroid.views.MapView
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import java.sql.Date
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
+import androidx.compose.material.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.griffith.maptrackerproject.DB.Locations
+import com.griffith.maptrackerproject.DB.LocationsDAO
+import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.Services.LocationService
 import com.griffith.maptrackerproject.ui.theme.Screen
+import dagger.hilt.android.AndroidEntryPoint
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
+import java.sql.Date
+import javax.inject.Inject
 
 
 var locationsTrackingActive: Boolean = false
+@AndroidEntryPoint
 class RouteDisplay : ComponentActivity() {
 
+    @Inject
+    lateinit var locationsDAO: LocationsDAO
     private lateinit var locationService: LocationService
     //Starting an pausing Locations recording on device
     private var isBound = false
+
+    private var locationsDisplayed: List<Locations> = mutableListOf()
 
 
     //Connecting to Location Service
@@ -73,26 +63,15 @@ class RouteDisplay : ComponentActivity() {
         }
     }
 
-    private val liveLocations = mutableMapOf<Date,GeoPoint>()
-
-    //TODO install HILT for global database instance distribution
-    /*val db = Room.databaseBuilder(
-        applicationContext,
-        AppDatabase::class.java,
-        "Locations_Data"
-    ).build()
-
-    val locationsDAO = db.locationDAO()*/
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             DisplayRouteMain(sampleLiveLocationsPreview())
         }
-        startLocationService()
         Intent(this,LocationService::class.java).also{
             bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
+        startLocationService()
     }
 
     fun sampleLiveLocationsPreview(): Map<Date, GeoPoint> {
