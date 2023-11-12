@@ -18,12 +18,8 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.MapTrackerProject"
+        android:enableOnBackInvokedCallback="true"
         tools:targetApi="34">
-        <activity
-            android:name=".Views.DayStatistics"
-            android:exported="false"
-            android:label="DayStatistics"
-            android:theme="@style/Theme.MapTrackerProject" />
         <activity
             android:name=".Views.RouteDisplay"
             android:exported="true"
@@ -35,11 +31,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".Views.History"
-            android:exported="true"
-            android:label="History"
-            android:parentActivityName=".Views.RouteDisplay" />
         <service android:name=".Services.LocationService"/>
     </application>
 

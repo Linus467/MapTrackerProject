@@ -14,6 +14,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ import org.osmdroid.util.GeoPoint
 import java.sql.Date
 import javax.inject.Inject
 
+@AndroidEntryPoint
 class LocationService : Service(),LocationListener {
     private lateinit var locationManager: LocationManager
     private val locationUpdateInterval: Long = 5000 // 5 seconds
@@ -45,17 +47,17 @@ class LocationService : Service(),LocationListener {
 
     fun stopLocationUpdates(){
         locationManager.removeUpdates(this)
-        locationsUpdatesActive
+        locationsUpdatesActive = !locationsUpdatesActive
         Log.d("LocationUpdates", "paused")
     }
     override fun onLocationChanged(location: Location) {
         val geoPoint = GeoPoint(location.latitude, location.longitude)
         val time = Calendar.getInstance().time
-        saveGeoPoint(geoPoint, time as Date)
+        val loc = Locations(geoPoint.latitude,geoPoint.longitude,geoPoint.altitude, date = Date(time.time))
+        saveGeoPoint(loc)
     }
 
-    fun saveGeoPoint(geoPoint: GeoPoint, date: Date){
-        val locations = Locations(geoPoint.latitude,geoPoint.longitude, geoPoint.altitude, date)
+    fun saveGeoPoint(locations: Locations){
         CoroutineScope(Dispatchers.IO).launch {
             locationsDAO.insert(locations)
         }

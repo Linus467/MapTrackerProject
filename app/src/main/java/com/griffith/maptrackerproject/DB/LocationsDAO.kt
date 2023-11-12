@@ -12,5 +12,7 @@ interface LocationsDAO {
     @Query("SELECT * FROM locations where date = :date")
     suspend fun getLocationsForDay(date: String): List<Locations>
 
+    @Query("SELECT * FROM locations")
+    suspend fun getAllLocations(): List<Locations>
 
 }
