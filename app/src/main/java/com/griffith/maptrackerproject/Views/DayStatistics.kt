@@ -1,6 +1,5 @@
 package com.griffith.maptrackerproject.Views
 
-import android.location.Location
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -13,6 +12,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +38,8 @@ import co.yml.charts.ui.linechart.model.LineStyle
 import co.yml.charts.ui.linechart.model.SelectionHighlightPoint
 import co.yml.charts.ui.linechart.model.SelectionHighlightPopUp
 import co.yml.charts.ui.linechart.model.ShadowUnderLine
+import com.griffith.maptrackerproject.DB.MockLocationsDAO
+import com.griffith.maptrackerproject.ViewModel.DayStatisticsViewModel
 import com.griffith.maptrackerproject.ui.theme.Purple700
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -45,61 +49,59 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 
-fun calculateDistance(locations: List<GeoPoint>): Float {
-    var totalDistance: Float = 0.0F
-
-    for(i in 0 until locations.size -2){
-        val start = locations[i]
-        val end = locations[i+1]
-
-        val result = FloatArray(1)
-        Location.distanceBetween(
-            start.latitude, start.longitude,
-            end.latitude, end.longitude,
-            result
-        )
-        totalDistance += result[0]
-    }
-    return totalDistance
-}
 
 @Preview()
 @Composable
 fun DayStatisticsPagePreview(){
-    DayStatisticsPage(date = Date(2023,2,1),false)
+    DayStatisticsPage(DayStatisticsViewModel(MockLocationsDAO()),date = Date(2023,2,1),false)
 }
 
 @Composable
-fun DayStatisticsPage(date: Date, mapVisible: Boolean) {
+fun DayStatisticsPage(viewModel: DayStatisticsViewModel, date: Date, mapVisible: Boolean) {
+    val hourlyDistances by viewModel.hourlyDistances.observeAsState()
+
+    LaunchedEffect(date) {
+        viewModel.loadLocationsForDay(date)
+    }
+
     LazyColumn(modifier = Modifier
         .fillMaxWidth()
         .padding(top = 30.dp)) {
         item {
             Spacer(modifier = Modifier.height(10.dp))
         }
-        item {
-            //Map doesn't work in Preview
-            if(mapVisible){
-                walkMap()
+
+        // Check if hourlyDistances is not null
+        if (hourlyDistances != null) {
+            item {
+                // Map display
+                if (mapVisible) {
+                    walkMap()
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+            item {
+                // Display hourly movement based on the data
+                hourlyMovement(hourlyDistances!!)
+            }
+            item {
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+            item {
+                elevationChange(hourlyDistances!!)
+            }
+        } else {
+            item {
+                Text("Loading data...", modifier = Modifier)
             }
         }
-        item {
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-        item {
-            hourlyMovement()
-        }
-        item {
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-        item {
-            elevationChange()
-        }
     }
+
     val formatter = SimpleDateFormat("dd.MM.yyyy")
     HeaderBox("${formatter.format(date)}")
 }
-
 @Composable
 fun HeaderBox(text: String) {
     Row{
@@ -186,7 +188,10 @@ fun walkMap(){
 }
 
 @Composable
-fun elevationChange(){
+fun elevationChange(hourlyDistances: Map<Int, Float>) {
+    val pointsData = hourlyDistances.map { (hour, elevation) ->
+        Point(hour.toFloat(), elevation, "$elevation m")
+    }
     Row{
         Box(modifier = Modifier
             .fillMaxWidth()
@@ -214,14 +219,17 @@ fun elevationChange(){
             .background(Purple700),
             Alignment.Center
         ) {
-            pointsDataPreview()
+            pointsData(pointsData)
         }
     }
 }
 
 
 @Composable
-fun hourlyMovement(){
+fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
+    val pointsData = hourlyDistances.map { (hour, distance) ->
+        Point(hour.toFloat(), distance, "$distance km")
+    }
     Row{
         Box(modifier = Modifier
             .fillMaxWidth()
@@ -249,7 +257,7 @@ fun hourlyMovement(){
             .background(Purple700),
             Alignment.Center
         ) {
-            pointsDataPreview()
+            pointsData(pointsData)
         }
     }
 }

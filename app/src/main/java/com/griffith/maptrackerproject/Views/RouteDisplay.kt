@@ -44,6 +44,7 @@ import com.griffith.maptrackerproject.DB.toGeoPoint
 import com.griffith.maptrackerproject.DB.toGeoPoints
 import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.Services.LocationService
+import com.griffith.maptrackerproject.ViewModel.DayStatisticsViewModel
 import com.griffith.maptrackerproject.ui.theme.Purple700
 import com.griffith.maptrackerproject.ui.theme.Screen
 import dagger.hilt.android.AndroidEntryPoint
@@ -106,7 +107,7 @@ class RouteDisplay : ComponentActivity() {
             }
         }
         setContent {
-            DisplayRouteMain(locationsDisplayed)
+            DisplayRouteMain(locationsDisplayed,locationsDAO)
         }
 
     }
@@ -139,7 +140,7 @@ class RouteDisplay : ComponentActivity() {
 }
 
 @Composable
-fun DisplayRouteMain(liveLocations: List<Locations>){
+fun DisplayRouteMain(liveLocations: List<Locations>, locationsDAO: LocationsDAO){
     val navController = rememberNavController()
     val context = LocalContext.current
 
@@ -197,7 +198,7 @@ fun DisplayRouteMain(liveLocations: List<Locations>){
                 val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
                 val date = dateString?.let { formatter.parse(it) }
                 if (date != null) {
-                    DayStatisticsPage(date, mapVisible)
+                    DayStatisticsPage(DayStatisticsViewModel(locationsDAO),date, mapVisible)
                 }
 
             }

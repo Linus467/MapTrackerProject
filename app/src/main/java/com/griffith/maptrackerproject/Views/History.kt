@@ -51,7 +51,9 @@ fun sampleLiveLocationsPreview(): List<Locations> {
         Locations(23.4749, -39.4394, 0.0, Date(123, 1, 2) ),
         Locations(34.0522, -118.2437, 0.0, Date(123, 1, 2)),
         Locations(40.7128, -74.0060, 0.0, Date(123, 1, 3)),
-        Locations(40.7128, -74.0060, 0.0, Date(123, 1, 4))
+        Locations(40.7128, -74.0060, 0.0, Date(123, 1, 4)),
+        Locations(40.7128, -74.0060, 0.0, Date(123, 1, 5))
+
     )
 }
 
