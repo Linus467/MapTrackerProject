@@ -43,6 +43,7 @@ import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.DB.toGeoPoint
 import com.griffith.maptrackerproject.DB.toGeoPoints
+import com.griffith.maptrackerproject.Interface.LocationUpdateController
 import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.Services.LocationService
 import com.griffith.maptrackerproject.ViewModel.DayStatisticsViewModel
@@ -63,7 +64,7 @@ import javax.inject.Inject
 
 
 @AndroidEntryPoint
-class RouteDisplay : ComponentActivity() {
+class RouteDisplay : ComponentActivity(), LocationUpdateController {
 
     @Inject
     lateinit var locationsDAO: LocationsDAO
@@ -83,6 +84,18 @@ class RouteDisplay : ComponentActivity() {
         }
         override fun onServiceDisconnected(name: ComponentName?) {
             isBound = false
+        }
+    }
+
+    override fun startLocationUpdates() {
+        if (isBound) {
+            locationService.startLocationUpdates()
+        }
+    }
+
+    override fun stopLocationUpdates() {
+        if (isBound) {
+            locationService.stopLocationUpdates()
         }
     }
 
@@ -108,7 +121,7 @@ class RouteDisplay : ComponentActivity() {
         }
 
         setContent {
-            DisplayRouteMain(locationsDisplayed,locationsDAO)
+            DisplayRouteMain(locationsDisplayed,locationsDAO,this)
         }
 
     }
@@ -141,7 +154,7 @@ class RouteDisplay : ComponentActivity() {
 }
 
 @Composable
-fun DisplayRouteMain(liveLocations: List<Locations>, locationsDAO: LocationsDAO){
+fun DisplayRouteMain(liveLocations: List<Locations>, locationsDAO: LocationsDAO, locationsUpdateController: LocationUpdateController){
     val navController = rememberNavController()
     val context = LocalContext.current
 
@@ -175,6 +188,11 @@ fun DisplayRouteMain(liveLocations: List<Locations>, locationsDAO: LocationsDAO)
                     selected = false,
                     onClick = {
                         locationsTrackingActive = !locationsTrackingActive
+                        if (locationsTrackingActive) {
+                            locationsUpdateController.startLocationUpdates()
+                        } else {
+                            locationsUpdateController.stopLocationUpdates()
+                        }
                     }
                 )
 
