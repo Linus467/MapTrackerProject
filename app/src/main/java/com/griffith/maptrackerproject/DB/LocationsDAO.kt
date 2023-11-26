@@ -3,6 +3,7 @@ package com.griffith.maptrackerproject.DB
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LocationsDAO {
@@ -13,6 +14,6 @@ interface LocationsDAO {
     suspend fun getLocationsForDay(date: String): List<Locations>
 
     @Query("SELECT * FROM locations")
-    suspend fun getAllLocations(): List<Locations>
+    fun getAllLocations(): Flow<List<Locations>>
 
 }

@@ -1,5 +1,7 @@
 package com.griffith.maptrackerproject.DB
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import java.util.Date
 
 class MockLocationsDAO : LocationsDAO {
@@ -17,8 +19,8 @@ class MockLocationsDAO : LocationsDAO {
         return mockLocations
     }
 
-    override suspend fun getAllLocations(): List<Locations> {
-        return mockLocations
+    override fun getAllLocations(): Flow<List<Locations>> {
+        return flowOf()
     }
 
 }

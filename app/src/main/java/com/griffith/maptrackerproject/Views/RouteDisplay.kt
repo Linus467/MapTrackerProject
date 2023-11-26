@@ -16,15 +16,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
 import androidx.compose.material.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -52,7 +53,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.Delay
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
@@ -62,7 +62,6 @@ import java.util.Locale
 import javax.inject.Inject
 
 
-var locationsTrackingActive: Boolean = false
 @AndroidEntryPoint
 class RouteDisplay : ComponentActivity() {
 
@@ -72,7 +71,7 @@ class RouteDisplay : ComponentActivity() {
     //Starting an pausing Locations recording on device
     private var isBound = false
 
-    private var locationsDisplayed: List<Locations> = mutableStateListOf()
+    private var locationsDisplayed: List<Locations> = mutableListOf()
 
     //Connecting to Location Service
     private val connection = object : ServiceConnection {
@@ -102,10 +101,12 @@ class RouteDisplay : ComponentActivity() {
         }
         lifecycleScope.launch {
             while(isActive){
-                locationsDisplayed = locationsDAO.getAllLocations()
-                Delay(1000)
+                locationsDAO.getAllLocations().collect{locations ->
+                    locationsDisplayed = locations
+                }
             }
         }
+
         setContent {
             DisplayRouteMain(locationsDisplayed,locationsDAO)
         }
@@ -144,12 +145,14 @@ fun DisplayRouteMain(liveLocations: List<Locations>, locationsDAO: LocationsDAO)
     val navController = rememberNavController()
     val context = LocalContext.current
 
+    var locationsTrackingActive by remember{ mutableStateOf(false) }
+
+
     Scaffold(
         bottomBar = {
             BottomNavigation(modifier = Modifier
                 .fillMaxWidth()
                 .size(45.dp)
-                .clip(RoundedCornerShape(10.dp))
                 .background(Purple700)
                 .shadow(2.dp)
 
@@ -185,7 +188,7 @@ fun DisplayRouteMain(liveLocations: List<Locations>, locationsDAO: LocationsDAO)
     ) {innerPadding->
         NavHost(navController, startDestination = Screen.MapView.route, Modifier.padding(innerPadding)) {
             composable(Screen.MapView.route) { OsmMapView(liveLocations) }
-            composable(Screen.History.route) { HistoryColumn(liveLocations = sampleLiveLocationsPreview(), navController) }
+            composable(Screen.History.route) { HistoryColumn(liveLocations = liveLocations, navController) }
             composable(
                 route = Screen.DayStatistics.route,
                 arguments = listOf(
@@ -231,7 +234,6 @@ fun OsmMapView(liveLocations: List<Locations>) {
                     outlinePaint.strokeWidth = 8f
                     setPoints(liveLocations.toGeoPoints())
                 }
-
                 mapView.overlays.add(polyline)
                 mapView.controller.setCenter(liveLocations.first().toGeoPoint())
 
