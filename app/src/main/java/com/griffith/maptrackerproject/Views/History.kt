@@ -34,8 +34,8 @@ import androidx.compose.ui.unit.sp
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.DB.toGeoPoint
-import com.griffith.maptrackerproject.ui.theme.Purple500
-import com.griffith.maptrackerproject.ui.theme.Purple700
+import com.griffith.maptrackerproject.ui.theme.GreenLight
+import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
@@ -57,21 +57,7 @@ class History : ComponentActivity(){
     }
 }
 
-
-
-
-fun sampleLiveLocationsPreview(): List<Locations> {
-    return listOf(
-        Locations(37.7749, -122.4194, 0.0, Date(123, 1, 1) ),
-        Locations(23.4749, -39.4394, 0.0, Date(123, 1, 2) ),
-        Locations(34.0522, -118.2437, 0.0, Date(123, 1, 2)),
-        Locations(40.7128, -74.0060, 0.0, Date(123, 1, 3)),
-        Locations(40.7128, -74.0060, 0.0, Date(123, 1, 4)),
-        Locations(40.7128, -74.0060, 0.0, Date(123, 1, 5))
-
-    )
-}
-
+//Shows all the days where locations where recorded
 @Composable
 fun HistoryColumn(locationsDAO: LocationsDAO){
     val liveLocations = remember { mutableStateOf<List<Locations>>(listOf()) }
@@ -93,7 +79,7 @@ fun HistoryColumn(locationsDAO: LocationsDAO){
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Purple700),
+                .background(GreenPrimary),
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -115,6 +101,7 @@ fun HistoryColumn(locationsDAO: LocationsDAO){
     }
 }
 
+//Shows on day that was recorded with its locations recorded where and on what date
 @Composable
 fun DayRow(geoPoints : List<GeoPoint>, date: Date){
     val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
@@ -134,7 +121,7 @@ fun DayRow(geoPoints : List<GeoPoint>, date: Date){
                 modifier = Modifier
                     .width(380.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Purple500)
+                    .background(GreenLight)
                     .padding(5.dp)
 
             ){
@@ -142,17 +129,17 @@ fun DayRow(geoPoints : List<GeoPoint>, date: Date){
                     text = formatter.format(date),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color.Black
                 )
                 Text(
                     text = "Locations: ${geoPoints.size}",
                     fontSize = 14.sp,
-                    color = Color.White
+                    color = Color.Black
                 )
                 Text(
                     text = "Locations: ${geoPoints.first()}",
                     fontSize = 14.sp,
-                    color = Color.White
+                    color = Color.Black
 
                 )
             }
@@ -161,6 +148,7 @@ fun DayRow(geoPoints : List<GeoPoint>, date: Date){
     }
 }
 
+//Groups all locations by day to display them in this pattern in the list
 fun groupLocationsByDay(liveLocations: List<Locations>): List<Pair<Date, List<GeoPoint>>> {
     val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
 

@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
 
+//Viewmodel used to get the Locations for the DayStatistics page
 class DayStatisticsViewModel(private val locationsDAO: LocationsDAO) : ViewModel() {
 
     private val _hourlyDistances = MutableStateFlow<Map<Int, Float>?>(null)

@@ -47,7 +47,8 @@ import co.yml.charts.ui.linechart.model.SelectionHighlightPopUp
 import co.yml.charts.ui.linechart.model.ShadowUnderLine
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
-import com.griffith.maptrackerproject.ui.theme.Purple700
+import com.griffith.maptrackerproject.ui.theme.GreenDark
+import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -69,7 +70,9 @@ class DayStatistics : ComponentActivity(){
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        //View Model to keep the Locations gathering before the opening of the activity
         val viewModel: DayStatisticsViewModel = DayStatisticsViewModel(locationsDAO)
+        //Formatting date
         val dateString = intent.getStringExtra("date") ?: ""
         val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
         val date = try {
@@ -77,18 +80,15 @@ class DayStatistics : ComponentActivity(){
         } catch (e: ParseException) {
             Date()
         }
+        //Calculating distances for display
         viewModel.loadHourlyDistances(date)
+
         setContent {
             DayStatisticsPage(date = date, mapVisible = true, locationsDAO, viewModel)
         }
     }
 }
 
-@Preview()
-@Composable
-fun DayStatisticsPagePreview(){
-    //DayStatisticsPage(DayStatisticsViewModel(MockLocationsDAO()),date = Date(2023,2,1),false)
-}
 
 @Composable
 fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDAO, viewModel: DayStatisticsViewModel) {
@@ -101,6 +101,7 @@ fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDA
         }
     }
 
+    //List of map and statistics
     LazyColumn(modifier = Modifier
         .fillMaxWidth()
         .padding(top = 30.dp)) {
@@ -140,6 +141,7 @@ fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDA
     HeaderBox("${formatter.format(date)}")
 
 }
+//Header box of the entire page
 @Composable
 fun HeaderBox(text: String) {
     Row{
@@ -148,7 +150,7 @@ fun HeaderBox(text: String) {
                 .fillMaxWidth()
                 .size(40.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Purple700),
+                .background(GreenDark),
             Alignment.Center
         ) {
             Text(
@@ -163,6 +165,7 @@ fun HeaderBox(text: String) {
     }
 }
 
+//Map if the walked distance that day
 @Composable
 fun walkMap(){
     val examplePoints = listOf(
@@ -176,7 +179,7 @@ fun walkMap(){
             .fillMaxWidth()
             .size(30.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Purple700),
+            .background(GreenPrimary),
             Alignment.Center
         ){
             Text(
@@ -197,7 +200,7 @@ fun walkMap(){
             .fillMaxWidth()
             .size(300.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Purple700),
+            .background(GreenPrimary),
             Alignment.Center
         ) {
             AndroidView(
@@ -224,6 +227,7 @@ fun walkMap(){
     }
 }
 
+//a Statistic that shows the elevation change made that day
 @Composable
 fun elevationChange(hourlyDistances: Map<Int, Float>) {
     val pointsData = hourlyDistances.map { (hour, elevation) ->
@@ -234,7 +238,7 @@ fun elevationChange(hourlyDistances: Map<Int, Float>) {
             .fillMaxWidth()
             .size(30.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Purple700),
+            .background(GreenPrimary),
             Alignment.Center
         ){
             Text(
@@ -253,7 +257,7 @@ fun elevationChange(hourlyDistances: Map<Int, Float>) {
             .fillMaxWidth()
             .size(300.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Purple700),
+            .background(GreenPrimary),
             Alignment.Center
         ) {
             pointsData(pointsData)
@@ -262,6 +266,7 @@ fun elevationChange(hourlyDistances: Map<Int, Float>) {
 }
 
 
+//Statistic of the movement one made in one day
 @Composable
 fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
     val pointsData = hourlyDistances.map { (hour, distance) ->
@@ -272,7 +277,7 @@ fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
             .fillMaxWidth()
             .size(30.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Purple700),
+            .background(GreenPrimary),
             Alignment.Center
         ){
             Text(
@@ -291,7 +296,7 @@ fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
             .fillMaxWidth()
             .size(300.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Purple700),
+            .background(GreenPrimary),
             Alignment.Center
         ) {
             pointsData(pointsData)
@@ -299,6 +304,7 @@ fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
     }
 }
 
+//preview of the statistic
 @Preview
 @Composable
 fun pointsDataPreview(){
@@ -307,6 +313,8 @@ fun pointsDataPreview(){
     pointsData(pointsData = pointsData)
 }
 
+
+//Method used to display data like Distance Walked in a day
 @Composable
 fun pointsData(pointsData: List<Point>){
     val xAxisData = AxisData.Builder()

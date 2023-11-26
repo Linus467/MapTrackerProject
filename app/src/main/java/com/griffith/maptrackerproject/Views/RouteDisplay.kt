@@ -41,22 +41,23 @@ import com.griffith.maptrackerproject.DB.toGeoPoints
 import com.griffith.maptrackerproject.Interface.LocationUpdateController
 import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.Services.LocationService
-import com.griffith.maptrackerproject.ui.theme.Purple700
+import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
-import java.util.Date
 import javax.inject.Inject
 
 
 @AndroidEntryPoint
 class RouteDisplay : ComponentActivity(), LocationUpdateController {
 
+    //Using hilt to manage Data Access Objects
     @Inject
     lateinit var locationsDAO: LocationsDAO
+    //Getting a location Service
     private lateinit var locationService: LocationService
     //Starting an pausing Locations recording on device
     private var isBound = false
@@ -74,12 +75,14 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
         }
     }
 
+    //Helper methods to start Location Updates from Composable
     override fun startLocationUpdates() {
         if (isBound) {
             locationService.startLocationUpdates()
         }
     }
 
+    //Helper methods to stop Location Updates from Composable
     override fun stopLocationUpdates() {
         if (isBound) {
             locationService.stopLocationUpdates()
@@ -88,11 +91,12 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        //Check permissions
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             //Request Location Permissions if not granted
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 0)
         } else {
+            //Always starts recording location on start must be changed !!
             startLocationService()
 
             Intent(this,LocationService::class.java).also{
@@ -106,23 +110,12 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
 
     }
 
-
-    fun sampleLiveLocationsPreview(): Map<Date, GeoPoint> {
-        val sampleLiveLocations = mapOf(
-            Date(123, 0, 1) to GeoPoint(37.7749, -122.4194),
-            Date(123, 0, 2) to GeoPoint(23.4749, -39.4394),
-            Date(123, 0, 2) to GeoPoint(34.0522, -118.2437),
-            Date(123, 0, 3) to GeoPoint(40.7128, -74.0060),
-            Date(123, 0, 4) to GeoPoint(40.7128, -74.0060)
-        )
-        return sampleLiveLocations
-    }
-
-
+    //When app the closed by android the connection to the Service is unbound
     override fun onDestroy() {
         super.onDestroy()
         //Disconnection from Location Service
         if(isBound){
+            locationService.stopLocationUpdates()
             unbindService(connection)
             isBound = false
         }
@@ -133,6 +126,7 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
     }
 }
 
+//Main Page with MapView
 @Composable
 fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: LocationUpdateController){
     val context = LocalContext.current
@@ -142,11 +136,12 @@ fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: Loca
     val historyIntent = Intent(context, History::class.java)
 
     Scaffold(
+        modifier = Modifier.background(GreenPrimary),
         bottomBar = {
             BottomNavigation(modifier = Modifier
                 .fillMaxWidth()
                 .size(45.dp)
-                .background(Purple700)
+                .background(GreenPrimary)
                 .shadow(2.dp)
 
             ) {
@@ -155,6 +150,7 @@ fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: Loca
                 }
                 Button(
                     onClick = {
+                        //Activate map tracking or not
                         locationsTrackingActive = !locationsTrackingActive
                         if (locationsTrackingActive) {
                             locationsUpdateController.startLocationUpdates()
@@ -171,8 +167,8 @@ fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: Loca
                     Icon(painter = painterResource(id = conId), contentDescription = "Tracking on off")
                 }
 
+                //Go to the History activity
                 Button(onClick = {
-
                     context.startActivity(historyIntent)
                     }
                 ) {
@@ -181,32 +177,13 @@ fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: Loca
             }
         }
     ) {innerPadding->
+        //Display of Map
         OsmMapView(locationsDAO, Modifier.padding(innerPadding))
-
-        /*NavHost(navController, startDestination = Screen.MapView.route, Modifier.padding(innerPadding)) {
-            composable(Screen.MapView.route) {  }
-            composable(Screen.History.route) { HistoryColumn(liveLocations = liveLocations, navController) }
-            composable(
-                route = Screen.DayStatistics.route,
-                arguments = listOf(
-                    navArgument("date") { type = NavType.StringType },
-                    navArgument("mapVisible") { type = NavType.BoolType }
-                )
-            ) { backStackEntry ->
-                val dateString = backStackEntry.arguments?.getString("date")
-                val mapVisible = backStackEntry.arguments?.getBoolean("mapVisible") ?: false
-                val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-                val date = dateString?.let { formatter.parse(it) }
-                if (date != null) {
-                    DayStatisticsPage(DayStatisticsViewModel(locationsDAO),date, mapVisible)
-                }
-
-            }
-        }*/
     }
 }
 
 
+//Shows the Map
 @Composable
 fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
     val context = LocalContext.current
