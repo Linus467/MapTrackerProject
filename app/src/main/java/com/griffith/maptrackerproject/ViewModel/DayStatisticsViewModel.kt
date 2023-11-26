@@ -1,33 +1,27 @@
-package com.griffith.maptrackerproject.ViewModel
 
 import android.location.Location
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
-import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
-import javax.inject.Inject
 
-@HiltViewModel
-class DayStatisticsViewModel @Inject constructor(
-    private val locationsDAO: LocationsDAO
-) : ViewModel() {
+class DayStatisticsViewModel(private val locationsDAO: LocationsDAO) : ViewModel() {
 
-    private val _hourlyDistances = MutableLiveData<Map<Int, Float>>()
-    val hourlyDistances: LiveData<Map<Int, Float>> = _hourlyDistances
+    private val _hourlyDistances = MutableStateFlow<Map<Int, Float>?>(null)
+    val hourlyDistances: StateFlow<Map<Int, Float>?> = _hourlyDistances
 
-    fun loadLocationsForDay(date: Date) {
+    fun loadHourlyDistances(date: Date) {
         viewModelScope.launch {
-            val locations = locationsDAO.getLocationsForDay(date.toString())
-            _hourlyDistances.value = calculateHourlyDistance(locations)
+            locationsDAO.getAllLocations().collect { locations ->
+                _hourlyDistances.value = calculateHourlyDistance(locations)
+            }
         }
     }
-
     fun calculateDistance(locations: List<Locations>): Float {
         var totalDistance: Float = 0.0F
 
@@ -76,4 +70,5 @@ class DayStatisticsViewModel @Inject constructor(
 
         return hourlyDistances
     }
+
 }

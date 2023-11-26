@@ -31,6 +31,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".Views.History"
+            android:exported="false"
+            android:label="History"
+            android:theme="@style/Theme.MapTrackerProject"
+            />
+        <activity
+            android:name=".Views.DayStatistics"
+            android:exported="false"
+            android:label="DayStatistics"
+            android:theme="@style/Theme.MapTrackerProject"
+            />
         <service android:name=".Services.LocationService"/>
     </application>
 

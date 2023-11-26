@@ -1,6 +1,10 @@
 package com.griffith.maptrackerproject.Views
 
+import android.content.Intent
+import android.os.Bundle
 import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -15,35 +19,46 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.griffith.maptrackerproject.DB.Locations
+import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.DB.toGeoPoint
 import com.griffith.maptrackerproject.ui.theme.Purple500
 import com.griffith.maptrackerproject.ui.theme.Purple700
-import com.griffith.maptrackerproject.ui.theme.Screen
+import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
+@AndroidEntryPoint
+class History : ComponentActivity(){
 
+    @Inject
+    lateinit var locationsDAO: LocationsDAO
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-
-@Preview(showBackground = true)
-@Composable
-fun HistoryColumnPreview() {
-    HistoryColumn(sampleLiveLocationsPreview(), navController = rememberNavController())
+        setContent{
+            HistoryColumn(locationsDAO)
+        }
+    }
 }
+
+
+
 
 fun sampleLiveLocationsPreview(): List<Locations> {
     return listOf(
@@ -57,9 +72,15 @@ fun sampleLiveLocationsPreview(): List<Locations> {
     )
 }
 
-
 @Composable
-fun HistoryColumn(liveLocations: List<Locations>, navController: NavController){
+fun HistoryColumn(locationsDAO: LocationsDAO){
+    val liveLocations = remember { mutableStateOf<List<Locations>>(listOf()) }
+
+    LaunchedEffect(key1 = Unit) {
+        locationsDAO.getAllLocations().collect { locations ->
+            liveLocations.value = locations
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -85,27 +106,26 @@ fun HistoryColumn(liveLocations: List<Locations>, navController: NavController){
             .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ){
-        items(groupLocationsByDay(liveLocations)){ (Date, Locations) ->
+        items(groupLocationsByDay(liveLocations.value)){ (Date, Locations) ->
             DayRow(
                 geoPoints = Locations,
                 date = Date,
-                navController = navController,
             )
         }
     }
 }
 
 @Composable
-fun DayRow(geoPoints : List<GeoPoint>, date: Date, navController: NavController){
+fun DayRow(geoPoints : List<GeoPoint>, date: Date){
     val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    val context = LocalContext.current
+    val statisticsIntent = Intent(context,DayStatistics::class.java)
     LazyRow(
         modifier = Modifier
             .clickable {
-                val route = Screen.DayStatistics.createRoute(
-                    formatter.format(date),
-                    true
-                )
-                navController.navigate(route)
+                val sendDate: String = formatter.format(date)
+                statisticsIntent.putExtra("date",sendDate)
+                context.startActivity(statisticsIntent)
             }
             .padding(top = 4.dp)
     ){
@@ -121,15 +141,19 @@ fun DayRow(geoPoints : List<GeoPoint>, date: Date, navController: NavController)
                 Text(
                     text = formatter.format(date),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
                 Text(
                     text = "Locations: ${geoPoints.size}",
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    color = Color.White
                 )
                 Text(
                     text = "Locations: ${geoPoints.first()}",
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    color = Color.White
+
                 )
             }
 

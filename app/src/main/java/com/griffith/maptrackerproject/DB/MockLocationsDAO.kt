@@ -15,8 +15,8 @@ class MockLocationsDAO : LocationsDAO {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getLocationsForDay(date: String): List<Locations> {
-        return mockLocations
+    override fun getLocationsForDay(date: Long): Flow<List<Locations>> {
+        return flowOf()
     }
 
     override fun getAllLocations(): Flow<List<Locations>> {

@@ -1,5 +1,10 @@
 package com.griffith.maptrackerproject.Views
 
+import DayStatisticsViewModel
+import android.location.Location
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -13,8 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,30 +45,60 @@ import co.yml.charts.ui.linechart.model.LineStyle
 import co.yml.charts.ui.linechart.model.SelectionHighlightPoint
 import co.yml.charts.ui.linechart.model.SelectionHighlightPopUp
 import co.yml.charts.ui.linechart.model.ShadowUnderLine
-import com.griffith.maptrackerproject.DB.MockLocationsDAO
-import com.griffith.maptrackerproject.ViewModel.DayStatisticsViewModel
+import com.griffith.maptrackerproject.DB.Locations
+import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.ui.theme.Purple700
+import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
+import java.text.ParseException
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
+import java.util.Locale
+import javax.inject.Inject
 
+@AndroidEntryPoint
+class DayStatistics : ComponentActivity(){
 
+    @Inject
+    lateinit var locationsDAO: LocationsDAO
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val viewModel: DayStatisticsViewModel = DayStatisticsViewModel(locationsDAO)
+        val dateString = intent.getStringExtra("date") ?: ""
+        val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        val date = try {
+            dateFormat.parse(dateString)
+        } catch (e: ParseException) {
+            Date()
+        }
+        viewModel.loadHourlyDistances(date)
+        setContent {
+            DayStatisticsPage(date = date, mapVisible = true, locationsDAO, viewModel)
+        }
+    }
+}
 
 @Preview()
 @Composable
 fun DayStatisticsPagePreview(){
-    DayStatisticsPage(DayStatisticsViewModel(MockLocationsDAO()),date = Date(2023,2,1),false)
+    //DayStatisticsPage(DayStatisticsViewModel(MockLocationsDAO()),date = Date(2023,2,1),false)
 }
 
 @Composable
-fun DayStatisticsPage(viewModel: DayStatisticsViewModel, date: Date, mapVisible: Boolean) {
-    val hourlyDistances by viewModel.hourlyDistances.observeAsState()
+fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDAO, viewModel: DayStatisticsViewModel) {
+    val hourlyDistances by viewModel.hourlyDistances.collectAsState()
+    val liveLocations = remember { mutableStateOf<List<Locations>>(listOf()) }
 
-    LaunchedEffect(date) {
-        viewModel.loadLocationsForDay(date)
+    LaunchedEffect(key1 = Unit) {
+        locationsDAO.getLocationsForDay(date.time).collect { locations ->
+            liveLocations.value = locations
+        }
     }
 
     LazyColumn(modifier = Modifier
@@ -101,6 +138,7 @@ fun DayStatisticsPage(viewModel: DayStatisticsViewModel, date: Date, mapVisible:
 
     val formatter = SimpleDateFormat("dd.MM.yyyy")
     HeaderBox("${formatter.format(date)}")
+
 }
 @Composable
 fun HeaderBox(text: String) {
@@ -149,7 +187,6 @@ fun walkMap(){
                 color = Color.White
             )
         }
-
     }
 
     Spacer(modifier = Modifier.height(5.dp))
@@ -313,4 +350,54 @@ fun pointsData(pointsData: List<Point>){
             .height(300.dp),
         lineChartData = lineChartData
     )
+}
+
+
+fun calculateDistance(locations: List<Locations>): Float {
+    var totalDistance: Float = 0.0F
+
+    for(i in 0 until locations.size -2){
+        val start = locations[i]
+        val end = locations[i+1]
+
+        val result = FloatArray(1)
+        Location.distanceBetween(
+            start.latitude, start.longitude,
+            end.latitude, end.longitude,
+            result
+        )
+        totalDistance += result[0]
+    }
+    return totalDistance
+}
+
+fun calculateHourlyDistance(locations: List<Locations>):  Map<Int,Float>{
+    val hourlyDistances = mutableMapOf<Int, Float>()
+
+    //Get all the locations by Hour
+    val locationsByHour = locations.groupBy {
+        val calendar = Calendar.getInstance()
+        calendar.time = it.date
+        calendar.get(Calendar.HOUR_OF_DAY)
+    }
+
+    //set the location into
+    for ((hour, locationsInHour) in locationsByHour) {
+        var totalDistance = 0f
+        for (i in 0 until locationsInHour.size - 1) {
+            val startLocation = locationsInHour[i]
+            val endLocation = locationsInHour[i + 1]
+
+            val results = FloatArray(1)
+            Location.distanceBetween(
+                startLocation.latitude, startLocation.longitude,
+                endLocation.latitude, endLocation.longitude,
+                results
+            )
+            totalDistance += results[0]
+        }
+        hourlyDistances[hour] = totalDistance
+    }
+
+    return hourlyDistances
 }
