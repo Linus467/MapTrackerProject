@@ -16,4 +16,6 @@ interface LocationsDAO {
     @Query("SELECT * FROM locations")
     fun getAllLocations(): Flow<List<Locations>>
 
+    @Query("SELECT * FROM locations ORDER BY date DESC LIMIT 1")
+    suspend fun getLastItem(): Locations?
 }

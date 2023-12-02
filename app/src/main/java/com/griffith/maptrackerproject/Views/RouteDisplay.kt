@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,8 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 
 
@@ -131,7 +134,7 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
 fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: LocationUpdateController){
     val context = LocalContext.current
 
-    var locationsTrackingActive by remember{ mutableStateOf(false) }
+    var locationsTrackingActive by remember{ mutableStateOf(true) }
     val mapIntent = Intent(context, RouteDisplay::class.java)
     val historyIntent = Intent(context, History::class.java)
 
@@ -145,7 +148,8 @@ fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: Loca
                 .shadow(2.dp)
 
             ) {
-                Button(onClick = { context.startActivity(mapIntent) }){
+                Button(onClick = { context.startActivity(mapIntent) }, modifier = Modifier.background(
+                    GreenPrimary)){
                     Icon(painter = painterResource(id = R.drawable.baseline_map_24), contentDescription = "Map View")
                 }
                 Button(
@@ -189,6 +193,8 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
     val context = LocalContext.current
     Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
 
+    val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault()) // Format for displaying time
+
     val liveLocations = remember { mutableStateOf<List<Locations>>(listOf()) }
 
     LaunchedEffect(key1 = Unit) {
@@ -211,16 +217,22 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
             mapView.overlays.clear()
             Log.d("Locations", "${liveLocations.value.size}")
             if (liveLocations.value.isNotEmpty()) {
-                val polyline = Polyline(mapView).apply {
-                    outlinePaint.color = android.graphics.Color.RED
-                    outlinePaint.strokeWidth = 8f
-                    setPoints(liveLocations.value.toGeoPoints())
+                liveLocations.value.forEach{
+                    val polyline = Polyline(mapView).apply {
+                        outlinePaint.color = GreenPrimary.toArgb()
+                        outlinePaint.strokeWidth = 8f
+                        setPoints(liveLocations.value.toGeoPoints())
+
+                    }
+                    mapView.overlays.add(polyline)
                 }
-                mapView.overlays.add(polyline)
+
                 mapView.controller.setCenter(liveLocations.value.first().toGeoPoint())
 
                 mapView.invalidate()
             }
+
+
         },
         modifier = modifier
 

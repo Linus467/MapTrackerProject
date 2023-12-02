@@ -51,7 +51,7 @@ class LocationService : Service(),LocationListener {
         Log.d("LocationUpdates", "paused")
     }
     override fun onLocationChanged(location: Location) {
-        val geoPoint = GeoPoint(location.latitude, location.longitude)
+        val geoPoint = GeoPoint(location.latitude, location.longitude, location.altitude)
         val time = Calendar.getInstance().time
         val loc = Locations(geoPoint.latitude,geoPoint.longitude,geoPoint.altitude, date = Date(time.time))
         saveGeoPoint(loc)
@@ -59,7 +59,10 @@ class LocationService : Service(),LocationListener {
 
     fun saveGeoPoint(locations: Locations){
         CoroutineScope(Dispatchers.IO).launch {
-            locationsDAO.insert(locations)
+            //prevent duplicates
+            if(locations != locationsDAO.getLastItem()){
+                locationsDAO.insert(locations)
+            }
         }
     }
 

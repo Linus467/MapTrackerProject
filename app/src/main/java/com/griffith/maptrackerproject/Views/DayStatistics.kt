@@ -17,11 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,10 +44,13 @@ import co.yml.charts.ui.linechart.model.SelectionHighlightPopUp
 import co.yml.charts.ui.linechart.model.ShadowUnderLine
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
+import com.griffith.maptrackerproject.DB.toGeoPoints
 import com.griffith.maptrackerproject.ui.theme.GreenDark
+import com.griffith.maptrackerproject.ui.theme.GreenLight
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
@@ -89,17 +89,12 @@ class DayStatistics : ComponentActivity(){
     }
 }
 
-
 @Composable
 fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDAO, viewModel: DayStatisticsViewModel) {
     val hourlyDistances by viewModel.hourlyDistances.collectAsState()
-    val liveLocations = remember { mutableStateOf<List<Locations>>(listOf()) }
-
-    LaunchedEffect(key1 = Unit) {
-        locationsDAO.getLocationsForDay(date.time).collect { locations ->
-            liveLocations.value = locations
-        }
-    }
+    val hourlyHeight by viewModel.hourlyHeight.collectAsState()
+    val liveLocations by viewModel.liveLocations.collectAsState()
+    val averageLocation by viewModel.locationsAverage.collectAsState()
 
     //List of map and statistics
     LazyColumn(modifier = Modifier
@@ -114,7 +109,7 @@ fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDA
             item {
                 // Map display
                 if (mapVisible) {
-                    walkMap()
+                    walkMap(liveLocations, averageLocation)
                 }
             }
             item {
@@ -128,7 +123,7 @@ fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDA
                 Spacer(modifier = Modifier.height(10.dp))
             }
             item {
-                elevationChange(hourlyDistances!!)
+                elevationChange(hourlyHeight!!)
             }
         } else {
             item {
@@ -136,11 +131,10 @@ fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDA
             }
         }
     }
-
     val formatter = SimpleDateFormat("dd.MM.yyyy")
     HeaderBox("${formatter.format(date)}")
-
 }
+
 //Header box of the entire page
 @Composable
 fun HeaderBox(text: String) {
@@ -167,7 +161,7 @@ fun HeaderBox(text: String) {
 
 //Map if the walked distance that day
 @Composable
-fun walkMap(){
+fun walkMap(liveLocations: List<Locations>, averageLocation: GeoPoint){
     val examplePoints = listOf(
         GeoPoint(52.5194, 13.4010),
         GeoPoint(52.5163, 13.3777),
@@ -192,6 +186,7 @@ fun walkMap(){
         }
     }
 
+
     Spacer(modifier = Modifier.height(5.dp))
 
     Row{
@@ -207,24 +202,53 @@ fun walkMap(){
                 factory = { ctx ->
                     MapView(ctx).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
-                        controller.setCenter(GeoPoint(52.5200, 13.4050))
-                        controller.setZoom(14)
+                        controller.setCenter(averageLocation)
+                        controller.setZoom(12)
+                        setMapZoomToShowAllLocations(this, liveLocations)
                     }
                 },
                 update = { mapView ->
                     mapView.overlays.clear()
-                    val polyline = Polyline().apply {
-                        outlinePaint.color = android.graphics.Color.RED
-                        outlinePaint.strokeWidth = 8f
-                        setPoints(examplePoints)
+                    if(liveLocations.isNotEmpty()){
+                        mapView.controller.setCenter(averageLocation)
+                        val polyline = Polyline().apply {
+                            outlinePaint.color = android.graphics.Color.RED
+                            outlinePaint.strokeWidth = 8f
+                            setPoints(liveLocations.toGeoPoints())
+                        }
+                        setMapZoomToShowAllLocations(mapView, liveLocations)
+                        mapView.overlays.add(polyline)
                     }
-                    mapView.overlays.add(polyline)
-
                     mapView.invalidate()
                 }
             )
         }
     }
+}
+
+
+fun setMapZoomToShowAllLocations(mapView: MapView, locations: List<Locations>) {
+    if (locations.isEmpty()) return
+
+    var minLat = 300.0
+    var maxLat = -300.0
+    var minLon = 300.0
+    var maxLon = -300.0
+    // Calculate bounds
+    for (location in locations) {
+        if(location.latitude > maxLat)
+            maxLat = location.latitude
+        if(location.latitude < minLat)
+            minLat = location.latitude
+        if(location.longitude > maxLon)
+            maxLon = location.longitude
+        if(location.longitude < minLon)
+            minLon = location.longitude
+    }
+
+    val boundingBox = BoundingBox(maxLat, maxLon, minLat, minLon)
+    mapView.zoomToBoundingBox(boundingBox, true)
+
 }
 
 //a Statistic that shows the elevation change made that day
@@ -270,9 +294,9 @@ fun elevationChange(hourlyDistances: Map<Int, Float>) {
 @Composable
 fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
     val pointsData = hourlyDistances.map { (hour, distance) ->
-        Point(hour.toFloat(), distance, "$distance km")
+        Point(hour.toFloat(), distance, "$distance m")
     }
-    Row{
+    Row(){
         Box(modifier = Modifier
             .fillMaxWidth()
             .size(30.dp)
@@ -290,7 +314,7 @@ fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
         }
 
     }
-    Row{
+    Row(){
         //Chart offset is not working in preview
         Box(modifier = Modifier
             .fillMaxWidth()
@@ -317,10 +341,11 @@ fun pointsDataPreview(){
 //Method used to display data like Distance Walked in a day
 @Composable
 fun pointsData(pointsData: List<Point>){
+    val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val xAxisData = AxisData.Builder()
-        .axisStepSize(100.dp)
+        .axisStepSize(40.dp)
         .steps(pointsData.size - 1)
-        .labelData { i -> i.toString() }
+        .labelData { i -> "${i.toString()}:00" }
         .labelAndAxisLinePadding(10.dp)
         .bottomPadding(10.dp)
         .build()
@@ -328,10 +353,10 @@ fun pointsData(pointsData: List<Point>){
     val steps = 5
     val yAxisData = AxisData.Builder()
         .steps(steps)
-        .labelAndAxisLinePadding(20.dp)
+        .labelAndAxisLinePadding(10.dp)
         .labelData { i ->
-            val yScale = 30f / steps
-            (i * yScale).formatToSinglePrecision() + " km"
+            val yScale = pointsData.maxBy { it.y }.y / steps
+            (i * yScale).formatToSinglePrecision() + " m"
         }.build()
 
     val lineChartData = LineChartData(
@@ -341,9 +366,9 @@ fun pointsData(pointsData: List<Point>){
                     dataPoints = pointsData,
                     LineStyle(),
                     IntersectionPoint(),
-                    SelectionHighlightPoint(),
+                    SelectionHighlightPoint(color = GreenLight),
                     ShadowUnderLine(),
-                    SelectionHighlightPopUp()
+                    SelectionHighlightPopUp(backgroundColor = GreenPrimary)
                 )
             ),
         ),

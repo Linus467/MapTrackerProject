@@ -23,3 +23,7 @@ fun List<Locations>.toGeoPoints(): List<GeoPoint> {
         GeoPoint(location.latitude, location.longitude, location.altitude)
     }
 }
+
+fun Locations.toList(): MutableList<List<Locations>> {
+    return this.toList();
+}

@@ -23,4 +23,9 @@ class MockLocationsDAO : LocationsDAO {
         return flowOf()
     }
 
+    override suspend fun getLastItem(): Locations? {
+        TODO("Not yet implemented")
+    }
+
+
 }
