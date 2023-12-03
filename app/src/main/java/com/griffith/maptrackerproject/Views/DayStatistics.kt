@@ -203,7 +203,6 @@ fun walkMap(liveLocations: List<Locations>, averageLocation: GeoPoint){
                     MapView(ctx).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         controller.setCenter(averageLocation)
-                        controller.setZoom(12)
                         setMapZoomToShowAllLocations(this, liveLocations)
                     }
                 },
@@ -245,9 +244,14 @@ fun setMapZoomToShowAllLocations(mapView: MapView, locations: List<Locations>) {
         if(location.longitude < minLon)
             minLon = location.longitude
     }
-
+    if((minLat == maxLat && minLon == maxLon) || (minLat > maxLat && minLon > maxLon)){
+        mapView.controller.setZoom(12)
+        return
+    }
     val boundingBox = BoundingBox(maxLat, maxLon, minLat, minLon)
-    mapView.zoomToBoundingBox(boundingBox, true)
+    mapView.minZoomLevel = 7.0
+    mapView.zoomToBoundingBox(boundingBox, false)
+    mapView.invalidate()
 
 }
 

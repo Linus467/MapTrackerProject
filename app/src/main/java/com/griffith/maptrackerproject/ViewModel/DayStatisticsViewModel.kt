@@ -30,7 +30,25 @@ class DayStatisticsViewModel(private val locationsDAO: LocationsDAO) : ViewModel
 
     fun loadHourlyDistances(date: Date) {
         viewModelScope.launch {
-            locationsDAO.getAllLocations().collect { locations ->
+            // Assuming 'date' is a Java 'long' representing the date in milliseconds
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = date.time
+
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+
+            val startOfDay = calendar.timeInMillis
+
+            calendar.set(Calendar.HOUR_OF_DAY, 23)
+            calendar.set(Calendar.MINUTE, 59)
+            calendar.set(Calendar.SECOND, 59)
+            calendar.set(Calendar.MILLISECOND, 999)
+
+            val endOfDay = calendar.timeInMillis
+
+            locationsDAO.getLocationsForDay(startOfDay,endOfDay).collect { locations ->
                 _hourlyDistances.value = calculateHourlyDistance(locations)
                 _hourlyHeight.value = calculateHourlyHeightDistance(locations)
                 _liveLocations.value = locations

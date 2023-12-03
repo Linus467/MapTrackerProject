@@ -57,10 +57,11 @@ class LocationService : Service(),LocationListener {
         saveGeoPoint(loc)
     }
 
-    fun saveGeoPoint(locations: Locations){
+    private fun saveGeoPoint(locations: Locations){
         CoroutineScope(Dispatchers.IO).launch {
-            //prevent duplicates
-            if(locations != locationsDAO.getLastItem()){
+            val lastItem = locationsDAO.getLastItem()
+            //prevent duplicates of the same location
+            if(locations.longitude != lastItem?.longitude && locations.latitude != lastItem?.latitude){
                 locationsDAO.insert(locations)
             }
         }

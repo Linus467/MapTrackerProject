@@ -10,8 +10,9 @@ interface LocationsDAO {
     @Insert
     suspend fun insert(vararg location: Locations)
 
-    @Query("SELECT * FROM locations where date = :date")
-    fun getLocationsForDay(date: Long): Flow<List<Locations>>
+    @Query("SELECT * FROM locations WHERE date BETWEEN :startOfDay AND :endOfDay")
+    fun getLocationsForDay(startOfDay: Long, endOfDay: Long): Flow<List<Locations>>
+
 
     @Query("SELECT * FROM locations")
     fun getAllLocations(): Flow<List<Locations>>

@@ -15,9 +15,11 @@ class MockLocationsDAO : LocationsDAO {
         TODO("Not yet implemented")
     }
 
-    override fun getLocationsForDay(date: Long): Flow<List<Locations>> {
-        return flowOf()
+    override fun getLocationsForDay(startOfDay: Long, endOfDay: Long): Flow<List<Locations>> {
+        TODO("Not yet implemented")
     }
+
+
 
     override fun getAllLocations(): Flow<List<Locations>> {
         return flowOf()
