@@ -70,6 +70,9 @@ dependencies {
     kapt "androidx.room:room-compiler:$room_version"
 
 
+    //video player
+    //implementation 'com.google.android.exoplayer:exoplayer:2.X.X'
+
     //Hilt
     implementation "com.google.dagger:hilt-android:$hilt_version"
     kapt "com.google.dagger:hilt-compiler:$hilt_version"

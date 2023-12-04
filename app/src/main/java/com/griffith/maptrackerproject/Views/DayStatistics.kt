@@ -1,7 +1,6 @@
 package com.griffith.maptrackerproject.Views
 
 import DayStatisticsViewModel
-import android.location.Location
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -211,7 +211,7 @@ fun walkMap(liveLocations: List<Locations>, averageLocation: GeoPoint){
                     if(liveLocations.isNotEmpty()){
                         mapView.controller.setCenter(averageLocation)
                         val polyline = Polyline().apply {
-                            outlinePaint.color = android.graphics.Color.RED
+                            outlinePaint.color = Color.Black.toArgb()
                             outlinePaint.strokeWidth = 8f
                             setPoints(liveLocations.toGeoPoints())
                         }
@@ -233,26 +233,28 @@ fun setMapZoomToShowAllLocations(mapView: MapView, locations: List<Locations>) {
     var maxLat = -300.0
     var minLon = 300.0
     var maxLon = -300.0
+
     // Calculate bounds
     for (location in locations) {
-        if(location.latitude > maxLat)
+        if (location.latitude > maxLat)
             maxLat = location.latitude
-        if(location.latitude < minLat)
+        if (location.latitude < minLat)
             minLat = location.latitude
-        if(location.longitude > maxLon)
+        if (location.longitude > maxLon)
             maxLon = location.longitude
-        if(location.longitude < minLon)
+        if (location.longitude < minLon)
             minLon = location.longitude
     }
-    if((minLat == maxLat && minLon == maxLon) || (minLat > maxLat && minLon > maxLon)){
+
+    if ((minLat == maxLat && minLon == maxLon) || (minLat > maxLat && minLon > maxLon)) {
         mapView.controller.setZoom(12)
         return
     }
+
     val boundingBox = BoundingBox(maxLat, maxLon, minLat, minLon)
-    mapView.minZoomLevel = 7.0
+    mapView.minZoomLevel = 11.0
     mapView.zoomToBoundingBox(boundingBox, false)
     mapView.invalidate()
-
 }
 
 //a Statistic that shows the elevation change made that day
@@ -387,54 +389,4 @@ fun pointsData(pointsData: List<Point>){
             .height(300.dp),
         lineChartData = lineChartData
     )
-}
-
-
-fun calculateDistance(locations: List<Locations>): Float {
-    var totalDistance: Float = 0.0F
-
-    for(i in 0 until locations.size -2){
-        val start = locations[i]
-        val end = locations[i+1]
-
-        val result = FloatArray(1)
-        Location.distanceBetween(
-            start.latitude, start.longitude,
-            end.latitude, end.longitude,
-            result
-        )
-        totalDistance += result[0]
-    }
-    return totalDistance
-}
-
-fun calculateHourlyDistance(locations: List<Locations>):  Map<Int,Float>{
-    val hourlyDistances = mutableMapOf<Int, Float>()
-
-    //Get all the locations by Hour
-    val locationsByHour = locations.groupBy {
-        val calendar = Calendar.getInstance()
-        calendar.time = it.date
-        calendar.get(Calendar.HOUR_OF_DAY)
-    }
-
-    //set the location into
-    for ((hour, locationsInHour) in locationsByHour) {
-        var totalDistance = 0f
-        for (i in 0 until locationsInHour.size - 1) {
-            val startLocation = locationsInHour[i]
-            val endLocation = locationsInHour[i + 1]
-
-            val results = FloatArray(1)
-            Location.distanceBetween(
-                startLocation.latitude, startLocation.longitude,
-                endLocation.latitude, endLocation.longitude,
-                results
-            )
-            totalDistance += results[0]
-        }
-        hourlyDistances[hour] = totalDistance
-    }
-
-    return hourlyDistances
 }

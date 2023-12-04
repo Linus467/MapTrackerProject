@@ -13,21 +13,24 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.BottomNavigation
-import androidx.compose.material.Button
 import androidx.compose.material.Icon
 import androidx.compose.material.Scaffold
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -37,6 +40,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
+import com.griffith.maptrackerproject.DB.calculateAveragePosition
 import com.griffith.maptrackerproject.DB.toGeoPoint
 import com.griffith.maptrackerproject.DB.toGeoPoints
 import com.griffith.maptrackerproject.Interface.LocationUpdateController
@@ -46,7 +50,6 @@ import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 import java.text.SimpleDateFormat
@@ -131,58 +134,93 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
 
 //Main Page with MapView
 @Composable
-fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: LocationUpdateController){
+fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: LocationUpdateController) {
     val context = LocalContext.current
 
-    var locationsTrackingActive by remember{ mutableStateOf(true) }
+    var locationsTrackingActive by remember { mutableStateOf(true) }
     val mapIntent = Intent(context, RouteDisplay::class.java)
     val historyIntent = Intent(context, History::class.java)
 
     Scaffold(
-        modifier = Modifier.background(GreenPrimary),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxWidth()
+            .shadow(0.dp)
+            .background(GreenPrimary),
         bottomBar = {
-            BottomNavigation(modifier = Modifier
-                .fillMaxWidth()
-                .size(45.dp)
-                .background(GreenPrimary)
-                .shadow(2.dp)
+            BottomNavigation(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .size(45.dp)
+                    .background(GreenPrimary)
+                    .shadow(2.dp),
+                backgroundColor = Color.Transparent
 
             ) {
-                Button(onClick = { context.startActivity(mapIntent) }, modifier = Modifier.background(
-                    GreenPrimary)){
-                    Icon(painter = painterResource(id = R.drawable.baseline_map_24), contentDescription = "Map View")
-                }
-                Button(
-                    onClick = {
-                        //Activate map tracking or not
-                        locationsTrackingActive = !locationsTrackingActive
-                        if (locationsTrackingActive) {
-                            locationsUpdateController.startLocationUpdates()
-                        } else {
-                            locationsUpdateController.stopLocationUpdates()
-                        }
-                    }
+                //Box that goes through the entire scaffold
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxWidth()
+                        .background(GreenPrimary)
                 ){
-                    val conId = if (locationsTrackingActive){
-                        R.drawable.pause_circle
-                    }else{
-                        R.drawable.play_circle_24
+                    TextButton(
+                        onClick = { context.startActivity(mapIntent) },
+                        modifier = Modifier.background(GreenPrimary)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_map_24),
+                            contentDescription = "Map View",
+                            Modifier.background(GreenPrimary),
+                            Color.White
+                        )
                     }
-                    Icon(painter = painterResource(id = conId), contentDescription = "Tracking on off")
+                    TextButton(
+                        onClick = {
+                            //Activate map tracking or not
+                            locationsTrackingActive = !locationsTrackingActive
+                            if (locationsTrackingActive) {
+                                locationsUpdateController.startLocationUpdates()
+                            } else {
+                                locationsUpdateController.stopLocationUpdates()
+                            }
+                        },
+                        modifier = Modifier.background(GreenPrimary)
+                            .align(Alignment.Center)
+                    ) {
+                        val conId = if (locationsTrackingActive) {
+                            R.drawable.pause_circle
+                        } else {
+                            R.drawable.play_circle_24
+                        }
+                        Icon(
+                            painter = painterResource(id = conId),
+                            contentDescription = "Tracking on off",
+                            Modifier.background(GreenPrimary),
+                            Color.White
+                        )
+                    }
+
+                    //Go to the History activity
+                    TextButton(onClick = {
+                        context.startActivity(historyIntent)
+                        },
+                        modifier = Modifier.background(GreenPrimary)
+                            .align(Alignment.BottomEnd)
+                    ) {
+                        Icon(
+                            painterResource(id = R.drawable.baseline_history_24),
+                            contentDescription = "Map View",
+                            Modifier.background(GreenPrimary),
+                            Color.White
+                        )
+                    }
                 }
 
-                //Go to the History activity
-                Button(onClick = {
-                    context.startActivity(historyIntent)
-                    }
-                ) {
-                    Icon(painterResource(id = R.drawable.baseline_history_24), contentDescription = "Map View")
-                }
             }
-        }
-    ) {innerPadding->
-        //Display of Map
-        OsmMapView(locationsDAO, Modifier.padding(innerPadding))
+        } )
+        { innerPadding->
+        OsmMapView(locationsDAO, Modifier.padding(innerPadding ))
     }
 }
 
@@ -209,7 +247,7 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
                 setTileSource(TileSourceFactory.MAPNIK)
                 isTilesScaledToDpi = true
                 setMultiTouchControls(true)
-                controller.setCenter(GeoPoint(52.5200, 13.4050))
+                controller.setCenter(liveLocations.value.calculateAveragePosition())
                 controller.setZoom(9.5)
             }
         },
@@ -219,7 +257,7 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
             if (liveLocations.value.isNotEmpty()) {
                 liveLocations.value.forEach{
                     val polyline = Polyline(mapView).apply {
-                        outlinePaint.color = GreenPrimary.toArgb()
+                        outlinePaint.color = Color.Black.toArgb()
                         outlinePaint.strokeWidth = 8f
                         setPoints(liveLocations.value.toGeoPoints())
 
@@ -227,7 +265,7 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
                     mapView.overlays.add(polyline)
                 }
 
-                mapView.controller.setCenter(liveLocations.value.first().toGeoPoint())
+                mapView.controller.setCenter(liveLocations.value.last().toGeoPoint())
 
                 mapView.invalidate()
             }

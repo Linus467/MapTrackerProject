@@ -2,7 +2,6 @@ package com.griffith.maptrackerproject.Views
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -10,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,17 +29,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
-import com.griffith.maptrackerproject.DB.toGeoPoint
+import com.griffith.maptrackerproject.DB.calculateDistance
+import com.griffith.maptrackerproject.DB.calculateNegativeAltitue
+import com.griffith.maptrackerproject.DB.calculatePositiveAltitue
+import com.griffith.maptrackerproject.DB.groupLocationsByDay
+import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.ui.theme.GreenLight
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
-import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -94,10 +98,10 @@ fun HistoryColumn(locationsDAO: LocationsDAO){
             .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ){
-        items(groupLocationsByDay(liveLocations.value)){ (Date, Locations) ->
+        items(liveLocations.value.groupLocationsByDay()){ (date, locations) ->
             DayRow(
-                geoPoints = Locations,
-                date = Date,
+                locations = locations,
+                date = date,
             )
         }
     }
@@ -105,7 +109,7 @@ fun HistoryColumn(locationsDAO: LocationsDAO){
 
 //Shows on day that was recorded with its locations recorded where and on what date
 @Composable
-fun DayRow(geoPoints : List<GeoPoint>, date: Date){
+fun DayRow(locations : List<Locations>, date: Date){
     val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
     val context = LocalContext.current
     val statisticsIntent = Intent(context,DayStatistics::class.java)
@@ -134,19 +138,54 @@ fun DayRow(geoPoints : List<GeoPoint>, date: Date){
                     color = Color.Black
                 )
                 Text(
-                    text = "Locations: ${geoPoints.size}",
+                    text = if (locations.size == 1) "${locations.size} Location" else "${locations.size} Locations",
                     fontSize = 14.sp,
                     color = Color.Black
                 )
                 Row(){
+                    Icon(
+                        painter = painterResource(id = R.drawable.figure_walk),
+                        contentDescription = "Location Icon",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .padding(0.dp, 0.dp, 5.dp, 0.dp),
+                        tint = Color.Black
+                    )
                     Text(
-                        text = "Locations: ",
+                        text = "${String.format("%.2f",locations.calculateDistance() / 1000)} km",
                         fontSize = 14.sp,
                         color = Color.Black
                     )
-                    Icon(painter = , contentDescription = )
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Icon(
+                        painter = painterResource(id = R.drawable.arrow_up_right),
+                        contentDescription = "Location Icon",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .padding(0.dp, 0.dp, 5.dp, 0.dp),
+                        tint = Color.Black
+                    )
                     Text(
-                        text = "${String.format("%.2f",geoPoints.sumOf { it.altitude } / geoPoints.size)}",
+                        text = "${String.format("%.2f",locations.calculatePositiveAltitue())}m",
+                        fontSize = 14.sp,
+                        color = Color.Black
+                    )
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Icon(
+                        painter = painterResource(id = R.drawable.arrow_down_right),
+                        contentDescription = "Location Icon",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .padding(0.dp, 0.dp, 5.dp, 0.dp),
+                        tint = Color.Black
+                    )
+
+                    Text(
+                        text = "${String.format("%.2f",locations.calculateNegativeAltitue())}m",
                         fontSize = 14.sp,
                         color = Color.Black
                     )
@@ -157,24 +196,3 @@ fun DayRow(geoPoints : List<GeoPoint>, date: Date){
         }
     }
 }
-
-//Groups all locations by day to display them in this pattern in the list
-fun groupLocationsByDay(liveLocations: List<Locations>): List<Pair<Date, List<GeoPoint>>> {
-    val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-
-    val locationsByDate = liveLocations.groupBy {
-        dateFormat.format(it.date)
-    }
-
-    Log.d("groupLocationsByDay", "Grouped locations by date: $locationsByDate")
-
-    return locationsByDate.map { (dateString, locations) ->
-        val date = dateFormat.parse(dateString) ?: Date()
-        val geoPoints = locations.map { it.toGeoPoint() }
-        Pair(date, geoPoints)
-    }.also {
-        Log.d("groupLocationsByDay", "Final grouped list: $it")
-    }
-}
-
-
