@@ -1,7 +1,11 @@
 package com.griffith.maptrackerproject.Views
 
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -39,8 +43,10 @@ import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.DB.calculateDistance
 import com.griffith.maptrackerproject.DB.calculateNegativeAltitue
 import com.griffith.maptrackerproject.DB.calculatePositiveAltitue
+import com.griffith.maptrackerproject.DB.filterLocationsOver30Kmph
 import com.griffith.maptrackerproject.DB.groupLocationsByDay
 import com.griffith.maptrackerproject.R
+import com.griffith.maptrackerproject.Services.LocationService
 import com.griffith.maptrackerproject.ui.theme.GreenLight
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,16 +56,62 @@ import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class History : ComponentActivity(){
+class History : ComponentActivity() {
 
     @Inject
     lateinit var locationsDAO: LocationsDAO
+
+
+    private lateinit var locationService: LocationService
+    private var isBound = false
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as LocationService.LocalBinder
+            locationService = binder.getService()
+            isBound = true
+            // You can interact with the service here if needed
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            isBound = false
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setContent{
-            HistoryColumn(locationsDAO)
+        bindService(Intent(this, LocationService::class.java), connection, Context.BIND_AUTO_CREATE)
+        setContent {
+            HistoryMain(locationsDAO, locationService)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isBound) {
+            unbindService(connection)
+            isBound = false
+        }
+    }
+}
+
+
+@Composable
+fun HistoryMain(
+    locationsDAO: LocationsDAO, locationService: LocationService
+){
+    val context = LocalContext.current
+    val mapIntent = Intent(context, RouteDisplay::class.java)
+    val historyIntent = Intent(context, History::class.java)
+    val locationServiceIntent = Intent(context, LocationService::class.java)
+
+    BottomBar(
+        context = context,
+        mapIntent = mapIntent,
+        historyIntent = historyIntent,
+        locationServiceIntent = locationServiceIntent
+    ) {
+        HistoryColumn(locationsDAO)
     }
 }
 
@@ -113,6 +165,8 @@ fun DayRow(locations : List<Locations>, date: Date){
     val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
     val context = LocalContext.current
     val statisticsIntent = Intent(context,DayStatistics::class.java)
+
+    val filteredLocations = locations.filterLocationsOver30Kmph() as MutableList<Locations>
     LazyRow(
         modifier = Modifier
             .clickable {
@@ -129,7 +183,6 @@ fun DayRow(locations : List<Locations>, date: Date){
                     .clip(RoundedCornerShape(10.dp))
                     .background(GreenLight)
                     .padding(5.dp)
-
             ){
                 Text(
                     text = formatter.format(date),
@@ -152,7 +205,7 @@ fun DayRow(locations : List<Locations>, date: Date){
                         tint = Color.Black
                     )
                     Text(
-                        text = "${String.format("%.2f",locations.calculateDistance() / 1000)} km",
+                        text = "${String.format("%.2f",filteredLocations.calculateDistance() / 1000)} km",
                         fontSize = 14.sp,
                         color = Color.Black
                     )
@@ -168,7 +221,7 @@ fun DayRow(locations : List<Locations>, date: Date){
                         tint = Color.Black
                     )
                     Text(
-                        text = "${String.format("%.2f",locations.calculatePositiveAltitue())}m",
+                        text = "${String.format("%.2f",filteredLocations.calculatePositiveAltitue())}m",
                         fontSize = 14.sp,
                         color = Color.Black
                     )
@@ -185,7 +238,7 @@ fun DayRow(locations : List<Locations>, date: Date){
                     )
 
                     Text(
-                        text = "${String.format("%.2f",locations.calculateNegativeAltitue())}m",
+                        text = "${String.format("%.2f",filteredLocations.calculateNegativeAltitue())}m",
                         fontSize = 14.sp,
                         color = Color.Black
                     )

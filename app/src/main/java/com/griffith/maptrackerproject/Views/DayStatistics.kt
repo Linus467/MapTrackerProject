@@ -1,6 +1,8 @@
 package com.griffith.maptrackerproject.Views
 
 import DayStatisticsViewModel
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,7 +47,10 @@ import co.yml.charts.ui.linechart.model.SelectionHighlightPopUp
 import co.yml.charts.ui.linechart.model.ShadowUnderLine
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
+import com.griffith.maptrackerproject.DB.groupLocationsWithin30Seconds
+import com.griffith.maptrackerproject.DB.toGeoPoint
 import com.griffith.maptrackerproject.DB.toGeoPoints
+import com.griffith.maptrackerproject.Services.LocationService
 import com.griffith.maptrackerproject.ui.theme.GreenDark
 import com.griffith.maptrackerproject.ui.theme.GreenLight
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
@@ -62,7 +68,7 @@ import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class DayStatistics : ComponentActivity(){
+class DayStatistics : ComponentActivity() {
 
     @Inject
     lateinit var locationsDAO: LocationsDAO
@@ -70,7 +76,6 @@ class DayStatistics : ComponentActivity(){
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        //View Model to keep the Locations gathering before the opening of the activity
         val viewModel: DayStatisticsViewModel = DayStatisticsViewModel(locationsDAO)
         //Formatting date
         val dateString = intent.getStringExtra("date") ?: ""
@@ -84,73 +89,94 @@ class DayStatistics : ComponentActivity(){
         viewModel.loadHourlyDistances(date)
 
         setContent {
-            DayStatisticsPage(date = date, mapVisible = true, locationsDAO, viewModel)
+            DayStatisticsPage(date = date, locationsDAO, viewModel)
         }
     }
+
 }
 
 @Composable
-fun DayStatisticsPage(date: Date, mapVisible: Boolean, locationsDAO: LocationsDAO, viewModel: DayStatisticsViewModel) {
+fun DayStatisticsPage(
+    date: Date,
+    locationsDAO: LocationsDAO,
+    viewModel: DayStatisticsViewModel,
+    context: Context = LocalContext.current
+    ) {
+    //Collecting data from the view model
     val hourlyDistances by viewModel.hourlyDistances.collectAsState()
     val hourlyHeight by viewModel.hourlyHeight.collectAsState()
     val liveLocations by viewModel.liveLocations.collectAsState()
     val averageLocation by viewModel.locationsAverage.collectAsState()
 
-    //List of map and statistics
-    LazyColumn(modifier = Modifier
-        .fillMaxWidth()
-        .padding(top = 30.dp)) {
-        item {
-            Spacer(modifier = Modifier.height(10.dp))
-        }
+    val mapIntent = Intent(context, RouteDisplay::class.java)
+    val historyIntent = Intent(context, History::class.java)
+    val locationServiceIntent = Intent(context, LocationService::class.java)
 
-        // Check if hourlyDistances is not null
-        if (hourlyDistances != null) {
+    BottomBar(
+        context = context,
+        mapIntent = mapIntent,
+        historyIntent = historyIntent,
+        locationServiceIntent = locationServiceIntent,
+    ) { innerPadding ->
+        //List of map and statistics
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 430.dp, bottom = 30.dp)
+        ) {
             item {
-                // Map display
-                if (mapVisible) {
-                    walkMap(liveLocations, averageLocation)
+                Spacer(modifier = Modifier.height(3.dp))
+            }
+            // Check if hourlyDistances is not null
+            if (hourlyDistances != null) {
+                item {
+                    Spacer(modifier = Modifier.height(5.dp))
+                }
+                item {
+                    // Display hourly movement based on the data
+                    hourlyMovement(hourlyDistances!!)
+                }
+                item {
+                    Spacer(modifier = Modifier.height(5.dp))
+                }
+                item {
+                    elevationChange(hourlyHeight!!)
+                }
+            } else {
+                item {
+                    Text("Loading data...", modifier = Modifier)
                 }
             }
-            item {
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-            item {
-                // Display hourly movement based on the data
-                hourlyMovement(hourlyDistances!!)
-            }
-            item {
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-            item {
-                elevationChange(hourlyHeight!!)
-            }
-        } else {
-            item {
-                Text("Loading data...", modifier = Modifier)
-            }
         }
+        walkMap(liveLocations, averageLocation)
+
+        Spacer(modifier = Modifier.height(400.dp))
+
+        val formatter = SimpleDateFormat("dd.MM.yyyy")
+        HeaderBox(text = formatter.format(date), modifier = Modifier.padding(top = 400.dp))
     }
-    val formatter = SimpleDateFormat("dd.MM.yyyy")
-    HeaderBox("${formatter.format(date)}")
 }
 
 //Header box of the entire page
 @Composable
-fun HeaderBox(text: String) {
+fun HeaderBox(
+    text: String,
+    modifier: Modifier = Modifier
+) {
     Row{
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(GreenDark),
+                .background(GreenDark)
+                ,
             Alignment.Center
         ) {
             Text(
                 text,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth(),
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -161,7 +187,10 @@ fun HeaderBox(text: String) {
 
 //Map if the walked distance that day
 @Composable
-fun walkMap(liveLocations: List<Locations>, averageLocation: GeoPoint){
+fun walkMap(
+    liveLocations: List<Locations>,
+    averageLocation: GeoPoint,
+){
     val examplePoints = listOf(
         GeoPoint(52.5194, 13.4010),
         GeoPoint(52.5163, 13.3777),
@@ -169,32 +198,11 @@ fun walkMap(liveLocations: List<Locations>, averageLocation: GeoPoint){
         GeoPoint(52.5208, 13.4094)
     )
     Row{
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .size(30.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(GreenPrimary),
-            Alignment.Center
-        ){
-            Text(
-                "Map",
-                Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                fontSize = 20.sp,
-                color = Color.White
-            )
-        }
-    }
-
-
-    Spacer(modifier = Modifier.height(5.dp))
-
-    Row{
         //Chart offset is not working in preview
         Box(modifier = Modifier
             .fillMaxWidth()
-            .size(300.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .size(400.dp)
+            .clip(RoundedCornerShape(3.dp))
             .background(GreenPrimary),
             Alignment.Center
         ) {
@@ -206,26 +214,37 @@ fun walkMap(liveLocations: List<Locations>, averageLocation: GeoPoint){
                         setMapZoomToShowAllLocations(this, liveLocations)
                     }
                 },
+
                 update = { mapView ->
                     mapView.overlays.clear()
-                    if(liveLocations.isNotEmpty()){
-                        mapView.controller.setCenter(averageLocation)
-                        val polyline = Polyline().apply {
-                            outlinePaint.color = Color.Black.toArgb()
-                            outlinePaint.strokeWidth = 8f
-                            setPoints(liveLocations.toGeoPoints())
+                    val polylineList = mutableListOf<Polyline>()
+
+                    liveLocations.ifNotEmpty { locations ->
+                        //create gaping between different path segments with grouping locations within 30 seconds
+                        for (filteredLocations in locations.groupLocationsWithin30Seconds()) {
+                            val polyline = Polyline(mapView).apply {
+                                outlinePaint.color = Color.Black.toArgb()
+                                outlinePaint.strokeWidth = 8f
+                                // Adding the locations from filteredLocations to the polyline
+                                setPoints(filteredLocations.toGeoPoints())
+                            }
+                            polylineList.add(polyline)
+                            setMapZoomToShowAllLocations(mapView, liveLocations)
                         }
-                        setMapZoomToShowAllLocations(mapView, liveLocations)
-                        mapView.overlays.add(polyline)
+
+                        // Adding all the polylines to the map
+                        for(polyline in polylineList){
+                            mapView.overlays.add(polyline)
+                        }
+
+                        // Center the map on the last location
+                        mapView.controller.setCenter(locations.last().toGeoPoint())
                     }
-                    mapView.invalidate()
                 }
             )
         }
     }
 }
-
-
 fun setMapZoomToShowAllLocations(mapView: MapView, locations: List<Locations>) {
     if (locations.isEmpty()) return
 
@@ -267,7 +286,6 @@ fun elevationChange(hourlyDistances: Map<Int, Float>) {
         Box(modifier = Modifier
             .fillMaxWidth()
             .size(30.dp)
-            .clip(RoundedCornerShape(10.dp))
             .background(GreenPrimary),
             Alignment.Center
         ){
@@ -279,13 +297,12 @@ fun elevationChange(hourlyDistances: Map<Int, Float>) {
                 color = Color.White
             )
         }
-
     }
     Row{
         //Chart offset is not working in preview
         Box(modifier = Modifier
             .fillMaxWidth()
-            .size(300.dp)
+            .size(230.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(GreenPrimary),
             Alignment.Center
@@ -306,7 +323,6 @@ fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
         Box(modifier = Modifier
             .fillMaxWidth()
             .size(30.dp)
-            .clip(RoundedCornerShape(10.dp))
             .background(GreenPrimary),
             Alignment.Center
         ){
@@ -324,7 +340,7 @@ fun hourlyMovement(hourlyDistances: Map<Int, Float>) {
         //Chart offset is not working in preview
         Box(modifier = Modifier
             .fillMaxWidth()
-            .size(300.dp)
+            .size(230.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(GreenPrimary),
             Alignment.Center
@@ -349,9 +365,9 @@ fun pointsDataPreview(){
 fun pointsData(pointsData: List<Point>){
     val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val xAxisData = AxisData.Builder()
-        .axisStepSize(40.dp)
+        .axisStepSize(20.dp)
         .steps(pointsData.size - 1)
-        .labelData { i -> "${i.toString()}:00" }
+        .labelData { i -> "${i.toString()}" }
         .labelAndAxisLinePadding(10.dp)
         .bottomPadding(10.dp)
         .build()
@@ -386,7 +402,13 @@ fun pointsData(pointsData: List<Point>){
     LineChart(
         modifier = Modifier
             .fillMaxWidth()
-            .height(300.dp),
+            .height(230.dp),
         lineChartData = lineChartData
     )
+}
+
+fun <T> List<T>.ifNotEmpty(block: (List<T>) -> Unit) {
+    if (isNotEmpty()) {
+        block(this)
+    }
 }

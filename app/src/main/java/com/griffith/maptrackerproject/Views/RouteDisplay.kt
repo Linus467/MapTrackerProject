@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.IBinder
 import android.preference.PreferenceManager
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -41,6 +40,7 @@ import androidx.core.content.ContextCompat
 import com.griffith.maptrackerproject.DB.Locations
 import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.DB.calculateAveragePosition
+import com.griffith.maptrackerproject.DB.groupLocationsWithin30Seconds
 import com.griffith.maptrackerproject.DB.toGeoPoint
 import com.griffith.maptrackerproject.DB.toGeoPoints
 import com.griffith.maptrackerproject.Interface.LocationUpdateController
@@ -74,7 +74,6 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
             val binder = service as LocationService.LocalBinder
             locationService = binder.getService()
             isBound = true
-            locationService.startLocationUpdates()
         }
         override fun onServiceDisconnected(name: ComponentName?) {
             isBound = false
@@ -111,7 +110,7 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
         }
 
         setContent {
-            DisplayRouteMain(locationsDAO,this)
+            DisplayRouteMain(locationsDAO,this,this)
         }
 
     }
@@ -134,8 +133,11 @@ class RouteDisplay : ComponentActivity(), LocationUpdateController {
 
 //Main Page with MapView
 @Composable
-fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: LocationUpdateController) {
-    val context = LocalContext.current
+fun DisplayRouteMain(
+    locationsDAO: LocationsDAO,
+    locationsUpdateController: LocationUpdateController,
+    context: Context
+    ) {
 
     var locationsTrackingActive by remember { mutableStateOf(true) }
     val mapIntent = Intent(context, RouteDisplay::class.java)
@@ -204,7 +206,7 @@ fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: Loca
                     //Go to the History activity
                     TextButton(onClick = {
                         context.startActivity(historyIntent)
-                        },
+                    },
                         modifier = Modifier.background(GreenPrimary)
                             .align(Alignment.BottomEnd)
                     ) {
@@ -219,7 +221,7 @@ fun DisplayRouteMain(locationsDAO: LocationsDAO, locationsUpdateController: Loca
 
             }
         } )
-        { innerPadding->
+    { innerPadding->
         OsmMapView(locationsDAO, Modifier.padding(innerPadding ))
     }
 }
@@ -253,29 +255,32 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
         },
         update = { mapView ->
             mapView.overlays.clear()
-            Log.d("Locations", "${liveLocations.value.size}")
-            if (liveLocations.value.isNotEmpty()) {
-                liveLocations.value.forEach{
+            val polylineList = mutableListOf<Polyline>()
+
+            liveLocations.value.ifNotEmpty { locations ->
+                //create gaping between different path segments with grouping locations within 30 seconds
+                for (filteredLocations in locations.groupLocationsWithin30Seconds()) {
                     val polyline = Polyline(mapView).apply {
                         outlinePaint.color = Color.Black.toArgb()
                         outlinePaint.strokeWidth = 8f
-                        setPoints(liveLocations.value.toGeoPoints())
-
+                        // Adding the locations from filteredLocations to the polyline
+                        setPoints(filteredLocations.toGeoPoints())
                     }
+                    polylineList.add(polyline)
+                }
+
+                // Adding all the polylines to the map
+                for(polyline in polylineList){
                     mapView.overlays.add(polyline)
                 }
 
-                mapView.controller.setCenter(liveLocations.value.last().toGeoPoint())
-
-                mapView.invalidate()
+                // Center the map on the last location
+                mapView.controller.setCenter(locations.last().toGeoPoint())
             }
-
-
         },
         modifier = modifier
 
     )
 }
-
 
 

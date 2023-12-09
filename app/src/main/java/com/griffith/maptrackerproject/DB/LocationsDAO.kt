@@ -13,7 +13,6 @@ interface LocationsDAO {
     @Query("SELECT * FROM locations WHERE date BETWEEN :startOfDay AND :endOfDay")
     fun getLocationsForDay(startOfDay: Long, endOfDay: Long): Flow<List<Locations>>
 
-
     @Query("SELECT * FROM locations")
     fun getAllLocations(): Flow<List<Locations>>
 

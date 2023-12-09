@@ -23,10 +23,11 @@ import java.sql.Date
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class LocationService : Service(),LocationListener {
+class LocationService : Service(), LocationListener {
     private lateinit var locationManager: LocationManager
     private val locationUpdateInterval: Long = 5000 // 5 seconds
     private val locationUpdateDistance: Float = 10f // 10 meters
+    private var isInitialized: Boolean = false
 
     var locationsUpdatesActive: Boolean = false
 
@@ -36,18 +37,31 @@ class LocationService : Service(),LocationListener {
     override fun onCreate() {
         super.onCreate()
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+        isInitialized = true
     }
 
     fun startLocationUpdates() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (!isInitialized) {
+            onCreate()
+        }
+
+        Log.d("LocationUpdates", "started")
+
+        val permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        Log.d("LocationUpdates", "Permission check result: $permissionCheck")
+
+        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, locationUpdateInterval, locationUpdateDistance, this)
             locationsUpdatesActive = true
+        } else {
+            // Handle the case where the permission is not granted
+            Log.e("LocationService", "Location permission not granted. Cannot start location updates.")
         }
     }
-
     fun stopLocationUpdates(){
+        locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         locationManager.removeUpdates(this)
-        locationsUpdatesActive = !locationsUpdatesActive
+        locationsUpdatesActive = false
         Log.d("LocationUpdates", "paused")
     }
     override fun onLocationChanged(location: Location) {
@@ -78,4 +92,3 @@ class LocationService : Service(),LocationListener {
     }
 
 }
-

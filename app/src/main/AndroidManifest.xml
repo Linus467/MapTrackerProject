@@ -43,6 +43,11 @@
             android:label="DayStatistics"
             android:theme="@style/Theme.MapTrackerProject"
             />
+        <activity android:name=".Views.LocationServiceButton"
+            android:exported="true"
+            android:label="LocationServiceButton"
+            android:theme="@style/Theme.MapTrackerProject"
+            />
         <service android:name=".Services.LocationService"/>
     </application>
 

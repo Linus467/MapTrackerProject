@@ -9,6 +9,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 @Entity(tableName = "locations")
 data class Locations(
@@ -172,4 +174,80 @@ fun List<Locations>.calculateNegativeAltitue() : Float {
         }
     }
     return totalHeight
+}
+
+fun List<Locations>.filterLocationsOver30Kmph(): List<Locations> {
+    //resulting list of locations
+    val filteredLocations = mutableListOf<Locations>()
+    val groupedLocation = mutableListOf<Locations>()
+    for(loc in this.groupLocationsWithin30Seconds()){
+        if(loc.size > 1)
+            groupedLocation.addAll(loc)
+    }
+    if(groupedLocation.size < 2){
+        return groupedLocation
+    }
+    for (i in 0 until groupedLocation.size - 2) {
+        val startLocation = groupedLocation[i]
+        val endLocation = groupedLocation[i + 1]
+
+        //Create locations objects to calculate the distance between them
+        val startLatLng = Location("").apply {
+            latitude = startLocation.latitude
+            longitude = startLocation.longitude
+            time = startLocation.date?.time ?: 0
+        }
+
+        val endLatLng = Location("").apply {
+            latitude = endLocation.latitude
+            longitude = endLocation.longitude
+            time = endLocation.date?.time ?: 0
+        }
+
+        //
+        if(endLocation.date?.time!! - startLocation.date?.time!! < 300000){
+            val distanceInMeters = startLatLng.distanceTo(endLatLng)
+            val timeInSeconds = abs(endLocation.date?.time!! - startLocation.date?.time!!) / 1000
+            val speedInMetersPerSecond = if (timeInSeconds > 0) distanceInMeters / timeInSeconds else 30.0f
+            val speedInKmph = speedInMetersPerSecond * 3.6f // Convert to km/h
+
+            if (speedInKmph < 30.0f) {
+                filteredLocations.add(startLocation)
+                filteredLocations.add(endLocation)
+            }
+        }
+    }
+
+    return filteredLocations
+}
+
+fun List<Locations>.groupLocationsWithin30Seconds(): List<List<Locations>> {
+    val groupedLocations = mutableListOf<List<Locations>>()
+
+    if (isEmpty()) {
+        return groupedLocations
+    }
+
+    var currentGroup = mutableListOf(this[0])
+
+    for (i in 1 until size) {
+        val currentLocation = this[i]
+        val previousLocation = this[i - 1]
+
+        val timeDifferenceMillis = currentLocation.date?.time!!.minus(previousLocation.date?.time!!)
+
+        if (TimeUnit.MILLISECONDS.toSeconds(timeDifferenceMillis) <= 30) {
+            currentGroup.add(currentLocation)
+        } else {
+            groupedLocations.add(currentGroup)
+            currentGroup = mutableListOf(currentLocation)
+        }
+    }
+
+    // Add the last group if it's not empty
+    if (currentGroup.isNotEmpty()) {
+        groupedLocations.add(currentGroup)
+    }
+
+    return groupedLocations
 }
