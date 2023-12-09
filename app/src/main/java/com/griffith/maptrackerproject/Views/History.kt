@@ -1,11 +1,7 @@
 package com.griffith.maptrackerproject.Views
 
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
 import android.os.Bundle
-import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -46,7 +42,6 @@ import com.griffith.maptrackerproject.DB.calculatePositiveAltitue
 import com.griffith.maptrackerproject.DB.filterLocationsOver30Kmph
 import com.griffith.maptrackerproject.DB.groupLocationsByDay
 import com.griffith.maptrackerproject.R
-import com.griffith.maptrackerproject.Services.LocationService
 import com.griffith.maptrackerproject.ui.theme.GreenLight
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
@@ -60,56 +55,29 @@ class History : ComponentActivity() {
 
     @Inject
     lateinit var locationsDAO: LocationsDAO
-
-
-    private lateinit var locationService: LocationService
-    private var isBound = false
-
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            val binder = service as LocationService.LocalBinder
-            locationService = binder.getService()
-            isBound = true
-            // You can interact with the service here if needed
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            isBound = false
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        bindService(Intent(this, LocationService::class.java), connection, Context.BIND_AUTO_CREATE)
         setContent {
-            HistoryMain(locationsDAO, locationService)
+            HistoryMain(locationsDAO)
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        if (isBound) {
-            unbindService(connection)
-            isBound = false
-        }
-    }
+
 }
 
 
 @Composable
 fun HistoryMain(
-    locationsDAO: LocationsDAO, locationService: LocationService
+    locationsDAO: LocationsDAO
 ){
     val context = LocalContext.current
     val mapIntent = Intent(context, RouteDisplay::class.java)
     val historyIntent = Intent(context, History::class.java)
-    val locationServiceIntent = Intent(context, LocationService::class.java)
 
     BottomBar(
         context = context,
         mapIntent = mapIntent,
         historyIntent = historyIntent,
-        locationServiceIntent = locationServiceIntent
     ) {
         HistoryColumn(locationsDAO)
     }

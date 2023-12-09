@@ -50,7 +50,6 @@ import com.griffith.maptrackerproject.DB.LocationsDAO
 import com.griffith.maptrackerproject.DB.groupLocationsWithin30Seconds
 import com.griffith.maptrackerproject.DB.toGeoPoint
 import com.griffith.maptrackerproject.DB.toGeoPoints
-import com.griffith.maptrackerproject.Services.LocationService
 import com.griffith.maptrackerproject.ui.theme.GreenDark
 import com.griffith.maptrackerproject.ui.theme.GreenLight
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
@@ -92,7 +91,6 @@ class DayStatistics : ComponentActivity() {
             DayStatisticsPage(date = date, locationsDAO, viewModel)
         }
     }
-
 }
 
 @Composable
@@ -110,13 +108,11 @@ fun DayStatisticsPage(
 
     val mapIntent = Intent(context, RouteDisplay::class.java)
     val historyIntent = Intent(context, History::class.java)
-    val locationServiceIntent = Intent(context, LocationService::class.java)
 
     BottomBar(
         context = context,
         mapIntent = mapIntent,
         historyIntent = historyIntent,
-        locationServiceIntent = locationServiceIntent,
     ) { innerPadding ->
         //List of map and statistics
         LazyColumn(

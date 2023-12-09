@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.IBinder
 import android.preference.PreferenceManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -139,7 +140,7 @@ fun DisplayRouteMain(
     context: Context
     ) {
 
-    var locationsTrackingActive by remember { mutableStateOf(true) }
+    var locationsTrackingActive by remember { mutableStateOf(false) }
     val mapIntent = Intent(context, RouteDisplay::class.java)
     val historyIntent = Intent(context, History::class.java)
 
@@ -182,8 +183,10 @@ fun DisplayRouteMain(
                             //Activate map tracking or not
                             locationsTrackingActive = !locationsTrackingActive
                             if (locationsTrackingActive) {
+                                Toast.makeText(context, "Tracking Started", Toast.LENGTH_SHORT).show()
                                 locationsUpdateController.startLocationUpdates()
                             } else {
+                                Toast.makeText(context, "Tracking Paused", Toast.LENGTH_SHORT).show()
                                 locationsUpdateController.stopLocationUpdates()
                             }
                         },
@@ -268,7 +271,6 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
                     }
                     polylineList.add(polyline)
                 }
-
                 // Adding all the polylines to the map
                 for(polyline in polylineList){
                     mapView.overlays.add(polyline)

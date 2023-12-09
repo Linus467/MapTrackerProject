@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.griffith.maptrackerproject.Interface.LocationUpdateController
 import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 
@@ -27,8 +28,7 @@ fun BottomBar(
     context: Context,
     mapIntent: Intent,
     historyIntent: Intent,
-    locationServiceIntent: Intent,
-
+    locationUpdateController : LocationUpdateController? = null,
     content: @Composable (innerPadding: PaddingValues) -> Unit
 ) {
     Scaffold(
@@ -63,20 +63,22 @@ fun BottomBar(
                             Color.White
                         )
                     }
-                    TextButton(
-                        onClick = {
-                            context.startActivity(locationServiceIntent)
-                        },
-                        modifier = Modifier
-                            .background(GreenPrimary)
-                            .align(Alignment.Center)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.play_circle_24),
-                            contentDescription = "Tracking on off",
-                            Modifier.background(GreenPrimary),
-                            Color.White
-                        )
+                    if(locationUpdateController != null){
+                        TextButton(
+                            onClick = {
+                                locationUpdateController.startLocationUpdates()
+                            },
+                            modifier = Modifier
+                                .background(GreenPrimary)
+                                .align(Alignment.CenterStart)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.play_circle_24),
+                                contentDescription = "Tracking on off",
+                                Modifier.background(GreenPrimary),
+                                Color.White
+                            )
+                        }
                     }
 
                     // Go to the History activity
