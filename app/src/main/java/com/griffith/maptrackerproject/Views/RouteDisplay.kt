@@ -49,11 +49,13 @@ import com.griffith.maptrackerproject.R
 import com.griffith.maptrackerproject.Services.LocationService
 import com.griffith.maptrackerproject.ui.theme.GreenPrimary
 import dagger.hilt.android.AndroidEntryPoint
+import getCurrentStartEndTime
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
@@ -241,6 +243,8 @@ fun OsmMapView(locationsDAO: LocationsDAO, modifier: Modifier) {
     val liveLocations = remember { mutableStateOf<List<Locations>>(listOf()) }
 
     LaunchedEffect(key1 = Unit) {
+        val (startOfDay, endOfDay) = getCurrentStartEndTime(Date())
+        //get all Locations for day
         locationsDAO.getAllLocations().collect { locations ->
             liveLocations.value = locations
         }

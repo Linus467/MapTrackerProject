@@ -33,23 +33,7 @@ class DayStatisticsViewModel(private val locationsDAO: LocationsDAO) : ViewModel
     fun loadHourlyDistances(date: Date) {
         viewModelScope.launch {
             // Getting the long values for the current day for extracting from DB
-            val calendar = Calendar.getInstance()
-            calendar.timeInMillis = date.time
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-
-            //Start of the Day in long
-            val startOfDay = calendar.timeInMillis
-
-            calendar.set(Calendar.HOUR_OF_DAY, 23)
-            calendar.set(Calendar.MINUTE, 59)
-            calendar.set(Calendar.SECOND, 59)
-            calendar.set(Calendar.MILLISECOND, 999)
-            //End of the Day in long
-            val endOfDay = calendar.timeInMillis
-
+            val (startOfDay, endOfDay) = getCurrentStartEndTime(date)
             //DB Data extraction
             locationsDAO.getLocationsForDay(startOfDay,endOfDay).collect { locations ->
                 //only counting the locations that are within 30 seconds of each other
@@ -68,4 +52,27 @@ class DayStatisticsViewModel(private val locationsDAO: LocationsDAO) : ViewModel
             }
         }
     }
+}
+
+fun getCurrentStartEndTime(date: Date) : Pair<Long, Long>{
+
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = date.time
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+
+    //Start of the Day in long
+    val startOfDay = calendar.timeInMillis
+
+    calendar.set(Calendar.HOUR_OF_DAY, 23)
+    calendar.set(Calendar.MINUTE, 59)
+    calendar.set(Calendar.SECOND, 59)
+    calendar.set(Calendar.MILLISECOND, 999)
+    //End of the Day in long
+    val endOfDay = calendar.timeInMillis
+
+    return Pair(startOfDay, endOfDay)
+
 }
